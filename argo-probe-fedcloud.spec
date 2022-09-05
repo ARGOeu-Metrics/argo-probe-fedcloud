@@ -49,6 +49,9 @@ rm -rf $RPM_BUILD_ROOT
 %endif
 
 %changelog
+* Mon Sep 5 2022 Katarina Zailac <kzailac@srce.hr> - 0.7.0-1%{?dist}
+- Updates from the devel branch of old repo
+- AO-651 Harmonize EGI probes
 * Fri Jun 24 2022 Katarina Zailac <kzailac@srce.hr> - 0.6.3-1%{?dist}
 - Add second token argument to novaprobe and swiftprobe
 * Wed Jun 16 2021 Emir Imamagic <eimamagi@srce.hr> - 0.6.2-1%{?dist}
