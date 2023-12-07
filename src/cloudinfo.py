@@ -21,25 +21,63 @@ import requests
 from six.moves.urllib.parse import urlparse, urlunparse
 
 from argo_probe_fedcloud import helpers
+import os
+import time
+import json
 
-
-def get_endpoint_from_appdb(endpoint, appdb_endpoint):
-    # Get from AppDB the endpoint
+def get_endpoint_info_from_appdb(appdb_endpoint, appdb_cache, appdb_cache_ttl):
+    """Fetch required data from AppDB IS GraphQL API for all endpoints
+    and cache them in a file. If the cache has not expired, serve the data
+    from the file upon the next request, otherwise, refetch from the API
+    """
+    data = None
+    fetched = False
     try:
-        helpers.debug("Querying AppDB for endpoint %s" % endpoint)
-        url = "/".join([appdb_endpoint, "rest/cloud/computing/endpoints"])
-        params = {"filter": "endpointURL::eq:\"%s\"" % endpoint}
-        r = requests.get(url,
-                         params=params,
-                         headers={"accept": "application/json"})
-        r.raise_for_status()
-        return r.json()["data"][0]["id"]
-    except requests.exceptions.RequestException as e:
-        msg = "Could not get info from AppDB: %s" % e
-        helpers.nagios_out("Unknown", msg, 3)
-    except (IndexError, ValueError):
-        return None
+        if os.path.exists(appdb_cache):
+            if (time.time() - os.path.getmtime(appdb_cache) < appdb_cache_ttl):
+                f = open(appdb_cache)
+                data = json.load(f)
+                f.close()
+    except (OSError, IOError) as e:
+        helpers.debug("Error while reading AppDB API response from cache file %s" % e)
 
+    if data is None:
+        try:
+            helpers.debug("Querying AppDB for endpoints")
+            url = "/".join([appdb_endpoint, "graphql"])
+            query = """
+{
+siteCloudComputingEndpoints{
+  items{
+    endpointURL
+    shares: shareList {
+      VO
+      entityCreationTime
+    }
+  }
+}
+}
+"""
+            params = {"query": query}
+            r = requests.get(url,
+                             params=params,
+                             headers={"accept": "application/json"})
+            r.raise_for_status()
+            data = r.json()["data"]["siteCloudComputingEndpoints"]["items"]
+            fetched = True
+        except requests.exceptions.RequestException as e:
+            msg = "Could not get info from AppDB: %s" % e
+            helpers.nagios_out("Unknown", msg, 3)
+        except (IndexError, ValueError):
+            return None
+    if fetched:
+        try:
+            f = open(appdb_cache, 'w')
+            json.dump(data, f)
+            f.close()
+        except (OSError, IOError) as e:
+            helpers.debug("Error while saving AppDB API response to cache file %s" % e)
+    return data
 
 def main():
     parser = argparse.ArgumentParser()
@@ -50,44 +88,44 @@ def main():
                         default="https://is.appdb.egi.eu")
     parser.add_argument("--warning-treshold", type=int, default=1)
     parser.add_argument("--critical-treshold", type=int, default=5)
+    parser.add_argument("--appdb-cache", dest="appdb_cache",
+                        default="/tmp/appdbcache.json")
+    parser.add_argument("--appdb-cache-ttl", dest="appdb_cache_ttl", type=int,
+                        default="600")
     opts = parser.parse_args()
 
     if opts.verb:
         helpers.verbose = True
 
-    endpoint_id = get_endpoint_from_appdb(opts.endpoint, opts.appdb_endpoint)
-    if not endpoint_id:
+    endpoints = get_endpoint_info_from_appdb(opts.appdb_endpoint, opts.appdb_cache, opts.appdb_cache_ttl)
+
+    search_endpoint = opts.endpoint
+    vos = None
+    
+    for endpoint in endpoints:
+        if endpoint["endpointURL"] == search_endpoint:
+            vos = endpoint["shares"]
+            break
+
+    if vos is None:
         # ARGO adds the port even if it's not originally in GOC, so try to
         # find the endpoint without it if it's HTTPS/443
-        parsed = urlparse(opts.endpoint)
+        parsed = urlparse(search_endpoint)
         if parsed[0] == "https" and parsed[1].endswith(":443"):
             helpers.debug("Retry query with no port in URL")
-            new_endpoint = urlunparse((parsed[0],
+            search_endpoint = urlunparse((parsed[0],
                                        parsed[1][:-4],
                                        parsed[2],
                                        parsed[3],
                                        parsed[4],
                                        parsed[5]))
-            endpoint_id = get_endpoint_from_appdb(new_endpoint,
-                                                  opts.appdb_endpoint)
+            for endpoint in endpoints:
+                if endpoint["endpointURL"] == search_endpoint:
+                    vos = endpoint["shares"]
+                    break
 
-    if not endpoint_id:
-        msg = "Could not get info from AppDB about endpoint %s" % opts.endpoint
-        helpers.nagios_out("Critical", msg, 2)
-
-    try:
-        url = "/".join([opts.appdb_endpoint,
-                        "rest/cloud/computing/endpoints/%s" % endpoint_id])
-        r = requests.get(url,
-                         params={"limit": "0", "skip": "0"},
-                         headers={"accept": "application/json"})
-        r.raise_for_status()
-        vos = r.json()["data"]["shares"]
-    except requests.exceptions.RequestException as e:
-        msg = "Could not get info from AppDB: %s" % e
-        helpers.nagios_out("Unknown", msg, 3)
-    except (IndexError, ValueError):
-        msg = "Could not get info from AppDB about endpoint %s" % opts.endpoint
+    if vos is None:
+        msg = "Could not get info from AppDB about endpoint %s" % search_endpoint
         helpers.nagios_out("Critical", msg, 2)
 
     # Now check how old the information is

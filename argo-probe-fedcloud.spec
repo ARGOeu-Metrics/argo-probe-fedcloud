@@ -4,7 +4,7 @@
 
 Summary:   ARGO probes for EGI FedCloud services
 Name:      argo-probe-fedcloud
-Version:   0.7.1
+Version:   0.8.0
 Release:   1%{?dist}
 License:   ASL 2.0
 Group:     Network/Monitoring
@@ -49,6 +49,9 @@ rm -rf $RPM_BUILD_ROOT
 %endif
 
 %changelog
+* Thu Dec 7 2022 Katarina Zailac <kzailac@srce.hr> - 0.8.0-1%{?dist}
+- ARGO-4438 Replace cloudinfo.py probe with newer one
+- ARGO-4434 Refactor check_perun probe to take cert and key as argument
 * Fri Oct 21 2022 Katarina Zailac <kzailac@srce.hr> - 0.7.1-1%{?dist}
 - AO-710 Remove support for two OIDC access tokens
 * Mon Sep 5 2022 Katarina Zailac <kzailac@srce.hr> - 0.7.0-1%{?dist}
