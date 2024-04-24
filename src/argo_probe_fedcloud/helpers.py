@@ -1,20 +1,16 @@
-import json
 import os
 import sys
-
-import requests
-
+from typing import List
 from urllib.parse import urlparse
 
-
 from keystoneauth1 import session
-from keystoneauth1.identity import v3
 from keystoneauth1.exceptions.base import ClientException
+from keystoneauth1.identity import v3
 from keystoneclient.v3 import client
 
 strerr = ""
 num_excp_expand = 0
-extra_out = []
+extra_out: List[str] = []
 verbose = False
 
 
@@ -49,7 +45,7 @@ class BaseAuth(object):
     def __init__(self, host, timeout, verify=True, **kwargs):
         self.parsed_url = urlparse(host)
         self.timeout = timeout
-        self.verify = verify 
+        self.verify = verify
         if self.parsed_url.scheme != "https":
             raise AuthenticationException(
                 "Connection error %s - Probe expects HTTPS endpoint"
@@ -70,13 +66,13 @@ class BaseAuth(object):
     def get_ops_tenant(self):
         raise NotImplementedError
 
-    def get_scoped_token(self):
+    def get_scoped_token(self, project):
         raise NotImplementedError
 
     def authenticate(self):
-        unscoped_token = self.get_unscoped_token()
-        tenant = self.get_ops_tenant(unscoped_token)
-        return self.get_scoped_token(unscoped_token, tenant)
+        self.get_unscoped_token()
+        project = self.get_ops_tenant()
+        return self.get_scoped_token(project)
 
     def get_info(self, region=None):
         raise NotImplementedError
@@ -86,7 +82,7 @@ class BaseAuth(object):
 
 
 class BaseV3Auth(BaseAuth):
-    def get_ops_tenant(self, unscoped_token):
+    def get_ops_tenant(self):
         keystone = client.Client(session=self.session)
         projects = keystone.auth.projects()
         for p in projects:
@@ -95,7 +91,7 @@ class BaseV3Auth(BaseAuth):
         else:
             return projects.pop()
 
-    def get_scoped_token(self, unscoped_token, project):
+    def get_scoped_token(self, project):
         try:
             self.session.invalidate()
             self.session.auth.project_id = project.id
@@ -111,7 +107,9 @@ class BaseV3Auth(BaseAuth):
 
     def get_swift_endpoint(self, region=None):
         # FIXME: region needs to be checked here!
-        swift = self.session.get_endpoint(service_type="object-store", region_name=region)
+        swift = self.session.get_endpoint(
+            service_type="object-store", region_name=region
+        )
         return self.session.auth.project_id, swift
 
 
@@ -119,7 +117,13 @@ class OIDCAuth(BaseV3Auth):
     name = "OpenID Connect"
 
     def __init__(
-        self, host, timeout, verify=False, identity_provider="egi.eu", access_token="", **kwargs
+        self,
+        host,
+        timeout,
+        verify=False,
+        identity_provider="egi.eu",
+        access_token="",
+        **kwargs,
     ):
         super(OIDCAuth, self).__init__(host, timeout, verify, **kwargs)
         self.identity_provider = identity_provider

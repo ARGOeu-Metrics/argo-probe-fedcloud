@@ -13,15 +13,14 @@
 # limitations under the License.
 
 import argparse
-from datetime import datetime
-
-import requests
-from urllib.parse import urlparse, urlunparse
-
-from argo_probe_fedcloud import helpers
+import json
 import os
 import time
-import json
+from datetime import datetime
+from urllib.parse import urlparse, urlunparse
+
+import requests
+from argo_probe_fedcloud import helpers
 
 
 def get_endpoint_info_from_appdb(appdb_endpoint, appdb_cache, appdb_cache_ttl):

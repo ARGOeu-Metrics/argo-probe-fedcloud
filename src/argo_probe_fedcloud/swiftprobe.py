@@ -138,7 +138,7 @@ class Swift:
             helpers.nagios_out(
                 "Critical",
                 "Could not delete the OpenStack Swift Container %s: %s"
-                % (container_id, helpers.msg_error_args(e)),
+                % (container_id, e),
                 2,
             )
 
@@ -210,7 +210,7 @@ def main():
         access_token = access_file.read().rstrip("\n")
         access_file.close()
 
-    for auth_class in [helpers.OIDCAuth, helpers.X509V3Auth, helpers.X509V2Auth]:
+    for auth_class in [helpers.OIDCAuth]:
         authenticated = False
         try:
             auth = auth_class(

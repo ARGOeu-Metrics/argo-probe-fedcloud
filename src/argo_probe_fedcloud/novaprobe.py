@@ -19,16 +19,12 @@ import json
 import os
 import socket
 import time
-from urllib.parse import urljoin
 
-import novaclient.client as nova_client
-from novaclient.exceptions import NotFound
-import neutronclient.v2_0.client as neutron_client
 import glanceclient
-import requests
-
+import neutronclient.v2_0.client as neutron_client
+import novaclient.client as nova_client
 from argo_probe_fedcloud import helpers
-
+from novaclient.exceptions import NotFound
 
 # time to sleep between status checks
 STATUS_SLEEP_TIME = 10
@@ -68,7 +64,6 @@ def get_smaller_flavor(nova):
 
 
 def wait_for_delete(server_id, vm_timeout, nova):
-    server_deleted = False
     server = nova.servers.get(server_id)
     server.delete()
     return wait_for_status("DELETED", server_id, vm_timeout, nova)
@@ -107,9 +102,7 @@ def wait_for_status(status, server_id, vm_timeout, nova):
             if status in server.status:
                 return True
             if "ERROR" in server.status:
-                helpers.debug(
-                    "Error from nova: %s" % response.json()["server"].get("fault", "")
-                )
+                helpers.debug(f"Error from nova: {server.fault}")
                 return False
             time.sleep(STATUS_SLEEP_TIME)
         except NotFound:
@@ -168,11 +161,6 @@ def get_network_id(project_id, neutron):
 
 
 def main():
-    class ArgHolder(object):
-        pass
-
-    argholder = ArgHolder()
-
     argnotspec = []
     parser = argparse.ArgumentParser()
     parser.add_argument("--endpoint", dest="endpoint", nargs="?")
@@ -195,7 +183,7 @@ def main():
     )
     parser.add_argument("--insecure", dest="insecure", action="store_true")
 
-    parser.parse_args(namespace=argholder)
+    argholder = parser.parse_args()
     helpers.verbose = argholder.verb
 
     for arg in ["endpoint", "timeout"]:
@@ -240,9 +228,8 @@ def main():
     if not argo_host:
         argo_host = socket.gethostname()
 
-    session = None
     for auth_class in [helpers.OIDCAuth]:
-                       #, helpers.SecretAppCredentialsAuth]:
+        # , helpers.SecretAppCredentialsAuth]:
         authenticated = False
         try:
             auth = auth_class(
