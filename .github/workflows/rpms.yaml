@@ -1,0 +1,72 @@
+---
+name: Create packages 📦 and release 🚀
+
+on:
+  pull_request:
+
+permissions: read-all
+
+jobs:
+  rocky-rpm:
+    name: Build rocky 📦
+    runs-on: ubuntu-latest
+    container: rockylinux:9
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: install build requisites
+        run: |
+          dnf install -y dnf-plugins-core
+          dnf config-manager --set-enabled crb
+          dnf install -y make rpm-build rpmlint
+          dnf builddep -y argo-probe-fedcloud.spec
+      - name: build rpm
+        run: |
+          make rpm
+      - name: rpmlint
+        run: |
+          ls -l
+          ls "RPMS/noarch/*.rpm"
+          ls "SRPMS/*.src.rpm"
+          rpmlint "RPMS/noarch/*.rpm"
+          rpmlint "SRPMS/*.src.rpm"
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: RPMS
+          path: "**/*.rpm"
+
+  github-release:
+    name: Upload 📦 to GitHub Release
+    # only publish releases on tag pushes
+    if: startsWith(github.ref, 'refs/tags/')
+    needs:
+      - rocky-rpm
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write
+      id-token: write
+
+    steps:
+      - name: Download all the dists
+        uses: actions/download-artifact@v4
+        with:
+          name: RPMS
+          path: rpms/
+      - name: Create GitHub Release
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: >-
+          gh release create
+          '${{ github.ref_name }}'
+          --repo '${{ github.repository }}'
+          --notes ""
+      - name: Upload artifact signatures to GitHub Release
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: >-
+          gh release upload
+          '${{ github.ref_name }}' rpms/**
+          --repo '${{ github.repository }}'

@@ -18,6 +18,7 @@ Requires:      python3-keystoneauth1
 Requires:      python3-ndg_httpsclient
 BuildRequires: python3-devel
 BuildRequires: pyproject-rpm-macros
+BuildRequires: python3-wheel
 %description
 Monitoring probes for EGI Fedcloud
 
@@ -28,9 +29,9 @@ Monitoring probes for EGI Fedcloud
 %pyproject_wheel
 
 %install
-# there are some extra binaries to be installed
 %pyproject_install
 %pyproject_save_files '*' +auto
+install --mode 755 src/*  ${RPM_BUILD_ROOT}%{_bindir}
 
 %clean
 rm -rf $RPM_BUILD_ROOT
