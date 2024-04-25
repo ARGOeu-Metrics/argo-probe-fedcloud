@@ -31,7 +31,7 @@ Monitoring probes for EGI Fedcloud
 %install
 %pyproject_install
 %pyproject_save_files '*' +auto
-install --mode 755 src/*  ${RPM_BUILD_ROOT}%{_bindir}
+install --mode 755 src/bin/*  ${RPM_BUILD_ROOT}%{_bindir}
 
 %clean
 rm -rf $RPM_BUILD_ROOT
