@@ -126,5 +126,3 @@ if ($res->content =~ /<tr><td>$site<\/td><td>(\d+?)<\/td><td>(.+?)<\/td><td>(\d.
 } else {
     $plugin->nagios_exit(CRITICAL, "Accounting data for site $site has not been found.");
 }
-
-

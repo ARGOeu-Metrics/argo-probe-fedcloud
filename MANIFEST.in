@@ -1,5 +1,3 @@
 include src/*
-include pymodule/*
+include src/bin/*
 include argo-probe-fedcloud.spec
-
-recursive-exclude pymodule *.pyc
