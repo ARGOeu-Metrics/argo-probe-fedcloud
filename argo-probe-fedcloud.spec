@@ -37,6 +37,7 @@ install --mode 755 src/bin/*  ${RPM_BUILD_ROOT}%{_bindir}
 rm -rf $RPM_BUILD_ROOT
 
 %files -n argo-probe-fedcloud -f %{pyproject_files}
+%{_bindir}/check_fedcloud_accnt
 
 %changelog
 * Mon Apr 8 2024 Enol Fernandez <enol.fernandez@egi.eu> - 0.9.0-1%{?dist}
