@@ -66,5 +66,5 @@ jobs:
           GITHUB_TOKEN: ${{ github.token }}
         run: >-
           gh release upload
-          '${{ github.ref_name }}' rpms/**
+          '${{ github.ref_name }}' rpms/RPMS/noarch/*
           --repo '${{ github.repository }}'
