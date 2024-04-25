@@ -26,11 +26,8 @@ jobs:
           make rpm
       - name: rpmlint
         run: |
-          ls -l
-          ls "RPMS/noarch/*.rpm"
-          ls "SRPMS/*.src.rpm"
-          rpmlint "RPMS/noarch/*.rpm"
-          rpmlint "SRPMS/*.src.rpm"
+          rpmlint RPMS/noarch/*.rpm
+          rpmlint SRPMS/*.src.rpm
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
