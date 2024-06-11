@@ -10,7 +10,8 @@ pipeline {
         GIT_COMMIT_HASH = sh(script: "cd ${WORKSPACE}/$PROJECT_DIR && \
                                       git log -1 --format=\"%H\" | cut -c1-7", returnStdout: true).trim()
         GIT_COMMIT_DATE = sh(script: "date -d \"\$(cd ${WORKSPACE}/$PROJECT_DIR && \
-                                      git show -s --format=%ci ${GIT_COMMIT_HASH})\" \"+%Y%m%d%H%M%S\"", returnStdout: true).trim()
+                                      git show -s --format=%ci ${GIT_COMMIT_HASH})\" \"+%Y%m%d%H%M%S\"",
+                             returnStdout: true).trim()
     }
     stages {
         stage ('Build') {
@@ -25,13 +26,13 @@ pipeline {
                     steps {
                         echo 'Building Rpm...'
                         withCredentials(bindings: [sshUserPrivateKey(
-                            credentialsId: 'jenkins-rpm-repo', usernameVariable: 'REPOUSER', \
+                            credentialsId: 'jenkins-rpm-repo', usernameVariable: 'REPOUSER',
                             keyFileVariable: 'REPOKEY'
                         )]) {
                             sh "/home/jenkins/build-rpm.sh -w ${WORKSPACE} -b ${BRANCH_NAME} \
-			        -d centos6 -p ${PROJECT_DIR} -s ${REPOKEY}"
+                                -d centos6 -p ${PROJECT_DIR} -s ${REPOKEY}"
                         }
-                        archiveArtifacts artifacts: '**/*.rpm', fingerprint: true.
+                        archiveArtifacts artifacts: '**/*.rpm', fingerprint: true
                     }
                     post {
                         always {
@@ -53,7 +54,7 @@ pipeline {
                             keyFileVariable: 'REPOKEY'
                         )]) {
                             sh "/home/jenkins/build-rpm.sh -w ${WORKSPACE} -b ${BRANCH_NAME} \
-			        -d centos7 -p ${PROJECT_DIR} -s ${REPOKEY}"
+                                -d centos7 -p ${PROJECT_DIR} -s ${REPOKEY}"
                         }
                         archiveArtifacts artifacts: '**/*.rpm', fingerprint: true
                     }
@@ -74,14 +75,15 @@ pipeline {
             script {
                 if (env.BRANCH_NAME == 'master' || env.BRANCH_NAME == 'devel') {
                     slackSend(message: ":rocket: New version for <$BUILD_URL|$PROJECT_DIR>:$BRANCH_NAME \
-		                        Job: $JOB_NAME !")
+                                        Job: $JOB_NAME !")
                 }
             }
         }
         failure {
             script {
                 if (env.BRANCH_NAME == 'master' || env.BRANCH_NAME == 'devel') {
-                    slackSend(message: ":rain_cloud: Build Failed for <$BUILD_URL|$PROJECT_DIR>:$BRANCH_NAME Job: $JOB_NAME")
+                    slackSend(message: ":rain_cloud: Build Failed for <$BUILD_URL|$PROJECT_DIR>:$BRANCH_NAME \
+                                        Job: $JOB_NAME")
                 }
             }
         }
