@@ -20,13 +20,17 @@ pipeline {
                         args '-u jenkins:jenkins'
                     }
                 }
-                steps {
-                    echo 'Building Rocky RPM...'
-                    withCredentials(bindings: [sshUserPrivateKey(credentialsId: 'jenkins-rpm-repo', usernameVariable: 'REPOUSER', \
-                                                                keyFileVariable: 'REPOKEY')]) {
-                        sh "/home/jenkins/build-rpm.sh -w ${WORKSPACE} -b ${BRANCH_NAME} -d rocky9 -p ${PROJECT_DIR} -s ${REPOKEY}"
+                stages {
+                    stage ('Build Rocky 9 RPM') {
+                        steps {
+                            echo 'Building Rocky 9 RPM...'
+                            withCredentials(bindings: [sshUserPrivateKey(credentialsId: 'jenkins-rpm-repo', usernameVariable: 'REPOUSER', \
+                                                                        keyFileVariable: 'REPOKEY')]) {
+                                sh "/home/jenkins/build-rpm.sh -w ${WORKSPACE} -b ${BRANCH_NAME} -d rocky9 -p ${PROJECT_DIR} -s ${REPOKEY}"
+                            }
+                            archiveArtifacts artifacts: '**/*.rpm', fingerprint: true
+                        }
                     }
-                    archiveArtifacts artifacts: '**/*.rpm', fingerprint: true
                 }
             }
         }
@@ -47,7 +51,7 @@ pipeline {
                 if ( env.BRANCH_NAME == 'master' || env.BRANCH_NAME == 'devel' ) {
                     slackSend( message: ":rain_cloud: Build Failed for <$BUILD_URL|$PROJECT_DIR>:$BRANCH_NAME Job: $JOB_NAME")
                 }
-            }   
+            }
         }
     }
 }
