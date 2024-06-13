@@ -40,6 +40,8 @@ rm -rf $RPM_BUILD_ROOT
 %{_bindir}/check_fedcloud_accnt
 
 %changelog
+* Thu Jun 13 2024 Emir Imamagic <eimamagi@srce.hr> - 0.10.0-1%{?dist}
+- Move to Monitoring::Plugin
 * Mon Apr 8 2024 Enol Fernandez <enol.fernandez@egi.eu> - 0.9.0-1%{?dist}
 - Move to python3 and rocky9
 * Wed Dec 7 2022 Katarina Zailac <kzailac@srce.hr> - 0.8.0-1%{?dist}
