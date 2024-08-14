@@ -1,4 +1,4 @@
-PKGNAME=argo-probe-json
+PKGNAME=argo-probe-fedcloud
 SPECFILE=${PKGNAME}.spec
 
 PKGVERSION=$(shell grep -s '^Version:' $(SPECFILE) | sed -e 's/Version: *//')
