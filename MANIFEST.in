@@ -1,3 +1,4 @@
 include src/*
+include src/fedcloud/*
 include src/bin/*
 include argo-probe-fedcloud.spec
