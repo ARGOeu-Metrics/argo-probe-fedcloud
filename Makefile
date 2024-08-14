@@ -1,8 +1,13 @@
 PKGNAME=argo-probe-fedcloud
 SPECFILE=${PKGNAME}.spec
-FILES=Makefile ${SPECFILE} src
 
 PKGVERSION=$(shell grep -s '^Version:' $(SPECFILE) | sed -e 's/Version: *//')
+
+srpm: dist
+	rpmbuild -ts --define='dist .el7' ${PKGNAME}-${PKGVERSION}.tar.gz
+
+rpm: dist
+	rpmbuild -ta ${PKGNAME}-${PKGVERSION}.tar.gz
 
 dist:
 	rm -rf dist
@@ -10,19 +15,12 @@ dist:
 	mv dist/${PKGNAME}-${PKGVERSION}.tar.gz .
 	rm -rf dist
 
-rpmdirs:
-	mkdir -p {BUILD,RPMS,SOURCES,SPECS,SRPMS}
-
-srpm: dist rpmdirs
-	rpmbuild -ts --define "_topdir $(CURDIR)" ${PKGNAME}-${PKGVERSION}.tar.gz
-
-rpm: dist rpmdirs
-	rpmbuild -ta --define "_topdir $(CURDIR)" ${PKGNAME}-${PKGVERSION}.tar.gz
-
 sources: dist
 
 clean:
 	rm -rf ${PKGNAME}-${PKGVERSION}.tar.gz
 	rm -f MANIFEST
 	rm -rf dist
-	rm -rf {BUILD,RPMS,SOURCES,SPECS,SRPMS}
+	rm -rf argo_probe_fedcloud.egg-info/
+	rm -rf **/*.pyc
+	rm -rf **/*.pyo
