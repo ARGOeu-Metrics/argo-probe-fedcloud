@@ -1,7 +1,2 @@
 requests
 ndg-httpsclient
-python-novaclient
-python-keystoneclient
-python-neutronclient
-python-glanceclient
-keystoneauth1
