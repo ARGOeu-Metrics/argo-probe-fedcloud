@@ -82,11 +82,8 @@ def clean_up(argo_host, vm_timeout, nova):
             else:
                 # this is another nagios test
                 # we may want to delete it if it's been too long
-                helpers.nagios_out(
-                    "Warning",
-                    "Found server from other argo mon host!",
-                    1,
-                )
+                helpers.debug(f"Found server from {server_mon_host}, "
+                              "triggering probe anyway")
 
 
 def wait_for_status(status, server_id, vm_timeout, nova):
