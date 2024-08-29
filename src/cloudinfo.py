@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 # Copyright (C) 2021 EGI Foundation
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,15 +15,15 @@
 # limitations under the License.
 
 import argparse
-import json
-import os
-import time
 from datetime import datetime
-from urllib.parse import urlparse, urlunparse
 
 import requests
-from argo_probe_fedcloud import helpers
+from six.moves.urllib.parse import urlparse, urlunparse
 
+from argo_probe_fedcloud import helpers
+import os
+import time
+import json
 
 def get_endpoint_info_from_appdb(appdb_endpoint, appdb_cache, appdb_cache_ttl):
     """Fetch required data from AppDB IS GraphQL API for all endpoints
@@ -32,7 +34,7 @@ def get_endpoint_info_from_appdb(appdb_endpoint, appdb_cache, appdb_cache_ttl):
     fetched = False
     try:
         if os.path.exists(appdb_cache):
-            if time.time() - os.path.getmtime(appdb_cache) < appdb_cache_ttl:
+            if (time.time() - os.path.getmtime(appdb_cache) < appdb_cache_ttl):
                 f = open(appdb_cache)
                 data = json.load(f)
                 f.close()
@@ -57,7 +59,9 @@ siteCloudComputingEndpoints{
 }
 """
             params = {"query": query}
-            r = requests.get(url, params=params, headers={"accept": "application/json"})
+            r = requests.get(url,
+                             params=params,
+                             headers={"accept": "application/json"})
             r.raise_for_status()
             data = r.json()["data"]["siteCloudComputingEndpoints"]["items"]
             fetched = True
@@ -68,40 +72,36 @@ siteCloudComputingEndpoints{
             return None
     if fetched:
         try:
-            f = open(appdb_cache, "w")
+            f = open(appdb_cache, 'w')
             json.dump(data, f)
             f.close()
         except (OSError, IOError) as e:
             helpers.debug("Error while saving AppDB API response to cache file %s" % e)
     return data
 
-
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("-e", "--endpoint", dest="endpoint", required=True)
     parser.add_argument("-v", dest="verb", action="store_true")
     parser.add_argument("-t", dest="timeout", type=int, default=120)
-    parser.add_argument("--appdb-endpoint", default="https://is.appdb.egi.eu")
+    parser.add_argument("--appdb-endpoint",
+                        default="https://is.appdb.egi.eu")
     parser.add_argument("--warning-treshold", type=int, default=1)
     parser.add_argument("--critical-treshold", type=int, default=5)
-    parser.add_argument(
-        "--appdb-cache", dest="appdb_cache", default="/tmp/appdbcache.json"
-    )
-    parser.add_argument(
-        "--appdb-cache-ttl", dest="appdb_cache_ttl", type=int, default="600"
-    )
+    parser.add_argument("--appdb-cache", dest="appdb_cache",
+                        default="/tmp/appdbcache.json")
+    parser.add_argument("--appdb-cache-ttl", dest="appdb_cache_ttl", type=int,
+                        default="600")
     opts = parser.parse_args()
 
     if opts.verb:
         helpers.verbose = True
 
-    endpoints = get_endpoint_info_from_appdb(
-        opts.appdb_endpoint, opts.appdb_cache, opts.appdb_cache_ttl
-    )
+    endpoints = get_endpoint_info_from_appdb(opts.appdb_endpoint, opts.appdb_cache, opts.appdb_cache_ttl)
 
     search_endpoint = opts.endpoint
     vos = None
-
+    
     for endpoint in endpoints:
         if endpoint["endpointURL"] == search_endpoint:
             vos = endpoint["shares"]
@@ -113,9 +113,12 @@ def main():
         parsed = urlparse(search_endpoint)
         if parsed[0] == "https" and parsed[1].endswith(":443"):
             helpers.debug("Retry query with no port in URL")
-            search_endpoint = urlunparse(
-                (parsed[0], parsed[1][:-4], parsed[2], parsed[3], parsed[4], parsed[5])
-            )
+            search_endpoint = urlunparse((parsed[0],
+                                       parsed[1][:-4],
+                                       parsed[2],
+                                       parsed[3],
+                                       parsed[4],
+                                       parsed[5]))
             for endpoint in endpoints:
                 if endpoint["endpointURL"] == search_endpoint:
                     vos = endpoint["shares"]
@@ -133,20 +136,24 @@ def main():
         # should look like "2020-12-14T10:50:56.773201"
         # will produce a Warning if the info is older than 1 day
         # or critical if older than 5 days
-        updated = datetime.strptime(vo["entityCreationTime"][:16], "%Y-%m-%dT%H:%M")
+        updated = datetime.strptime(vo["entityCreationTime"][:16],
+                                    "%Y-%m-%dT%H:%M")
         helpers.debug("VO %(VO)s updated by %(entityCreationTime)s" % vo)
-        diff_days = ((today - updated).total_seconds()) / (60 * 60 * 24.0)
+        diff_days = ((today - updated).total_seconds()) / (60 * 60 * 24.)
         if diff_days > opts.critical_treshold:
-            msg = "VO %s info is older than %s days" % (
-                vo["VO"],
-                opts.critical_treshold,
-            )
+            msg = ("VO %s info is older than %s days"
+                   % (vo["VO"], opts.critical_treshold))
             helpers.nagios_out("Critical", msg, 2)
         elif diff_days > opts.warning_treshold:
-            msg = "VO %s info is older than %s days" % (vo["VO"], opts.warning_treshold)
+            msg = ("VO %s info is older than %s days"
+                   % (vo["VO"], opts.warning_treshold))
             helpers.nagios_out("Warning", msg, 1)
 
-    helpers.nagios_out("OK", "Endpoint publishing up to date information for VOs", 0)
+    helpers.nagios_out(
+        "OK",
+        "Endpoint publishing up to date information for VOs",
+        0
+    )
 
 
 if __name__ == "__main__":

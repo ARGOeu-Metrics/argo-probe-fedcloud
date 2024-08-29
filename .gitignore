@@ -1,6 +1,0 @@
-__pycache__/
-*.egg-info
-*.py[cod]
-token.txt
-.idea/
-docker/
