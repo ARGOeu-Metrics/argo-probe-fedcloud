@@ -1,6 +1,6 @@
 Summary:       ARGO probes for EGI FedCloud services
 Name:          argo-probe-fedcloud
-Version:       0.10.0
+Version:       0.10.1
 Release:       1%{?dist}
 License:       ASL 2.0
 Group:         Network/Monitoring
@@ -38,6 +38,8 @@ rm -rf $RPM_BUILD_ROOT
 %{_bindir}/check_fedcloud_accnt
 
 %changelog
+* Thu Aug 29 2024 Katarina Zailac <kzailac@srce.hr> - 0.10.1-1%{?dist}
+- Do not skip probe if server from other argo
 * Wed Aug 14 2024 Katarina Zailac <kzailac@srce.hr> - 0.10.0-1%{?dist}
 - ARGO-4683 Migrate from Nagios::Plugin to Monitoring::Plugin argo-probe-fedcloud
 - AO-974 Create Jenkinsfile for argo-probe-fedcloud
