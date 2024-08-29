@@ -1,19 +1,20 @@
 PKGNAME=argo-probe-fedcloud
 SPECFILE=${PKGNAME}.spec
+FILES=Makefile ${SPECFILE} src
 
 PKGVERSION=$(shell grep -s '^Version:' $(SPECFILE) | sed -e 's/Version: *//')
 
+dist:
+	rm -rf dist
+	python setup.py sdist
+	mv dist/${PKGNAME}-${PKGVERSION}.tar.gz .
+	rm -rf dist
+
 srpm: dist
-	rpmbuild -ts --define='dist .el7' ${PKGNAME}-${PKGVERSION}.tar.gz
+	rpmbuild -ts --define='dist .el6' ${PKGNAME}-${PKGVERSION}.tar.gz
 
 rpm: dist
 	rpmbuild -ta ${PKGNAME}-${PKGVERSION}.tar.gz
-
-dist:
-	rm -rf dist
-	python3 setup.py sdist
-	mv dist/${PKGNAME}-${PKGVERSION}.tar.gz .
-	rm -rf dist
 
 sources: dist
 
@@ -21,6 +22,3 @@ clean:
 	rm -rf ${PKGNAME}-${PKGVERSION}.tar.gz
 	rm -f MANIFEST
 	rm -rf dist
-	rm -rf argo_probe_fedcloud.egg-info/
-	rm -rf **/*.pyc
-	rm -rf **/*.pyo
