@@ -17,7 +17,6 @@ Requires:      python3-keystoneauth1
 BuildRequires: python3-devel
 BuildRequires: pyproject-rpm-macros
 BuildRequires: python3-wheel
-
 %description
 Monitoring probes for EGI Fedcloud
 
