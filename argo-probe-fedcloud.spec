@@ -1,7 +1,7 @@
 Summary:       ARGO probes for EGI FedCloud services
 Name:          argo-probe-fedcloud
 Version:       0.10.1
-Release:       1%{?dist}
+Release:       2%{?dist}
 License:       ASL 2.0
 Group:         Network/Monitoring
 Source0:       argo-probe-fedcloud-%{version}.tar.gz
@@ -17,7 +17,6 @@ Requires:      python3-keystoneauth1
 BuildRequires: python3-devel
 BuildRequires: pyproject-rpm-macros
 BuildRequires: python3-wheel
-
 %description
 Monitoring probes for EGI Fedcloud
 
@@ -39,14 +38,7 @@ rm -rf $RPM_BUILD_ROOT
 %{_bindir}/check_fedcloud_accnt
 
 %changelog
-* Thu Aug 29 2024 Katarina Zailac <kzailac@srce.hr> - 0.10.1-1%{?dist}
-- Do not skip probe if server from other argo
-* Wed Aug 14 2024 Katarina Zailac <kzailac@srce.hr> - 0.10.0-1%{?dist}
-- ARGO-4683 Migrate from Nagios::Plugin to Monitoring::Plugin argo-probe-fedcloud
-- AO-974 Create Jenkinsfile for argo-probe-fedcloud
-* Mon Apr 8 2024 Enol Fernandez <enol.fernandez@egi.eu> - 0.9.0-1%{?dist}
-- Move to python3 and rocky9
-* Wed Dec 7 2022 Katarina Zailac <kzailac@srce.hr> - 0.8.0-1%{?dist}
+* Thu Dec 7 2022 Katarina Zailac <kzailac@srce.hr> - 0.8.0-1%{?dist}
 - ARGO-4438 Replace cloudinfo.py probe with newer one
 - ARGO-4434 Refactor check_perun probe to take cert and key as argument
 * Fri Oct 21 2022 Katarina Zailac <kzailac@srce.hr> - 0.7.1-1%{?dist}
