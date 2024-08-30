@@ -1,7 +1,7 @@
 Summary:       ARGO probes for EGI FedCloud services
 Name:          argo-probe-fedcloud
 Version:       0.10.1
-Release:       1%{?dist}
+Release:       2%{?dist}
 License:       ASL 2.0
 Group:         Network/Monitoring
 Source0:       argo-probe-fedcloud-%{version}.tar.gz
