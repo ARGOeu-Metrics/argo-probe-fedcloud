@@ -261,7 +261,7 @@ def novaprobe():
     helpers.debug("Project OPS, ID: %s" % tenant_id)
 
     # get clients
-    nova = nova_client.Client("2.1", region_name=region, session=ks_session)
+    nova = nova_client.Client("2", region_name=region, session=ks_session)
     glance = glanceclient.Client("2", region_name=region, session=ks_session)
     neutron = neutron_client.Client(region_name=region, session=ks_session)
 
