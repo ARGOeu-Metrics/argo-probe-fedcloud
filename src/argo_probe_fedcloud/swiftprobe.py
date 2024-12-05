@@ -21,6 +21,8 @@ from argo_probe_fedcloud import helpers
 
 
 class Swift:
+    """The swift probe"""
+
     def __init__(self, swift_endpoint, token, session):
         if swift_endpoint[-1] == "/":
             swift_endpoint = swift_endpoint[:-1]

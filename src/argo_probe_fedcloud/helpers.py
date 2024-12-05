@@ -42,6 +42,8 @@ def debug(msg, newline=True):
 
 
 class BaseAuth(object):
+    """Common class for authentication into OpenStack"""
+
     def __init__(self, host, timeout, verify=True, **kwargs):
         self.parsed_url = urlparse(host)
         self.timeout = timeout
@@ -82,6 +84,8 @@ class BaseAuth(object):
 
 
 class BaseV3Auth(BaseAuth):
+    """Common class for Keystone V3 Authentication"""
+
     def get_ops_tenant(self):
         keystone = client.Client(session=self.session)
         projects = keystone.auth.projects()
