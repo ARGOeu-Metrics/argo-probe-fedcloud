@@ -21,6 +21,6 @@ clean:
 	rm -rf ${PKGNAME}-${PKGVERSION}.tar.gz
 	rm -f MANIFEST
 	rm -rf dist
-	rm -rf argo_probe_fedcloud.egg-info/
+	rm -rf src/argo_probe_fedcloud.egg-info/
 	rm -rf **/*.pyc
 	rm -rf **/*.pyo

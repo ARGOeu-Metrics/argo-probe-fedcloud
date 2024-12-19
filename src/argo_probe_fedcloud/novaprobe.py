@@ -17,6 +17,7 @@ import json
 import os
 import socket
 import time
+import traceback
 
 import glanceclient
 import neutronclient.v2_0.client as neutron_client
@@ -82,8 +83,9 @@ def clean_up(argo_host, vm_timeout, nova):
             else:
                 # this is another nagios test
                 # we may want to delete it if it's been too long
-                helpers.debug(f"Found server from {server_mon_host}, "
-                              "triggering probe anyway")
+                helpers.debug(
+                    f"Found server from {server_mon_host}, " "triggering probe anyway"
+                )
 
 
 def wait_for_status(status, server_id, vm_timeout, nova):
@@ -155,7 +157,7 @@ def get_network_id(project_id, neutron):
         return None
 
 
-def main():
+def novaprobe():
     argnotspec = []
     parser = argparse.ArgumentParser()
     parser.add_argument("--endpoint", dest="endpoint", nargs="?")
@@ -261,6 +263,8 @@ def main():
     glance = glanceclient.Client("2", region_name=region, session=ks_session)
     neutron = neutron_client.Client(region_name=region, session=ks_session)
 
+    helpers.debug("Nova version: %s" % nova.versions.get_current().version)
+
     if not argholder.image:
         image = get_image(argholder.appdb_img, glance)
     else:
@@ -317,6 +321,14 @@ def main():
             % (server_id, server_createt, server_deletet),
             2,
         )
+
+
+def main():
+    try:
+        novaprobe()
+    except Exception as e:
+        helpers.debug(traceback.format_exc())
+        helpers.nagios_out("Critical", "Unexpected error: %s" % e, 2)
 
 
 if __name__ == "__main__":
