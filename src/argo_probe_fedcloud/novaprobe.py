@@ -204,9 +204,15 @@ def novaprobe():
             "Unknown", "cert or access-token command-line arguments not specified", 3
         )
 
-    if argholder.image is None and argholder.appdb_img is None and argholder.registry_img is None:
+    if (
+        argholder.image is None
+        and argholder.appdb_img is None
+        and argholder.registry_img is None
+    ):
         helpers.nagios_out(
-            "Unknown", "image, appdb-image or registry_img command-line arguments not specified", 3
+            "Unknown",
+            "image, appdb-image or registry_img command-line arguments not specified",
+            3,
         )
 
     if len(argnotspec) > 0:

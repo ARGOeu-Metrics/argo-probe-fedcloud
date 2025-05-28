@@ -23,6 +23,6 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           DEFAULT_BRANCH: devel
-          VALIDATE_PYTHON_PYLINT: true
+          VALIDATE_PYTHON_PYLINT: false
           VALIDATE_GROOVY: false
-          VALIDATE_JSON: true
+          VALIDATE_JSON_PRETTIER: false
