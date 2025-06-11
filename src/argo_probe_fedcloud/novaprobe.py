@@ -281,7 +281,7 @@ def novaprobe():
     helpers.debug("Nova version: %s" % nova.versions.get_current().version)
 
     if not argholder.image:
-        if argholder.registry_image:
+        if argholder.registry_img:
             image = get_registry_image(argholder.registry_img, glance)
         if not image and argholder.appdb_img:
             image = get_appdb_image(argholder.appdb_img, glance)
