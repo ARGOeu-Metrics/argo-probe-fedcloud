@@ -32,11 +32,8 @@ SERVER_NAME = "cloudmonprobe-servertest"
 
 def get_registry_image(registry_id, glance):
     for image in glance.images.list():
-        if image.get("ad:appid", "") == registry_id:
-            return image
-        # TODO: this is to be deprecated as sites move to newer cloudkeeper
         attrs = json.loads(image.get("APPLIANCE_ATTRIBUTES", "{}"))
-        if attrs.get("ad:appid", "") == registry_id:
+        if attrs.get("eu.egi.cloud.image_ref", "") == registry_id:
             return image
     helpers.debug("Image with registry_id %s not found!" % registry_id)
 
