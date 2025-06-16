@@ -89,11 +89,14 @@ def clean_up(argo_host, vm_timeout, nova):
                     1,
                 )
             else:
-                # this is another nagios test
-                # we may want to delete it if it's been too long
+                # this is another test
+                # we may want to delete it if it's been too long, now we wait for
+                # STATUS_SLEEP_TIME so it can get cleaned up by the other server
                 helpers.debug(
-                    f"Found server from {server_mon_host}, " "triggering probe anyway"
+                    f"Found server from {server_mon_host}, "
+                    f"triggering probe anyway after {STATUS_SLEEP_TIME} seconds"
                 )
+                time.sleep(STATUS_SLEEP_TIME)
 
 
 def wait_for_status(status, server_id, vm_timeout, nova):
