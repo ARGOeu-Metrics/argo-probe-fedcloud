@@ -71,8 +71,12 @@ def get_smaller_flavor(nova):
 
 
 def wait_for_delete(server_id, vm_timeout, nova):
-    server = nova.servers.get(server_id)
-    server.delete()
+    try:
+        server = nova.servers.get(server_id)
+        server.delete()
+    except NotFound:
+        helpers.debug(f"Server {server_id} is gone, ignoring")
+        return True
     return wait_for_status("DELETED", server_id, vm_timeout, nova)
 
 
