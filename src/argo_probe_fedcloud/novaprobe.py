@@ -30,7 +30,15 @@ STATUS_SLEEP_TIME = 10
 SERVER_NAME = "cloudmonprobe-servertest"
 
 
-def get_image(appdb_id, glance):
+def get_registry_image(registry_id, glance):
+    for image in glance.images.list():
+        attrs = json.loads(image.get("APPLIANCE_ATTRIBUTES", "{}"))
+        if attrs.get("eu.egi.cloud.image_ref", "") == registry_id:
+            return image
+    helpers.debug("Image with registry_id %s not found!" % registry_id)
+
+
+def get_appdb_image(appdb_id, glance):
     for image in glance.images.list():
         if image.get("ad:appid", "") == appdb_id:
             return image
@@ -171,6 +179,7 @@ def novaprobe():
         "--vm-timeout", dest="vm_timeout", type=int, nargs="?", default=300
     )
     parser.add_argument("--appdb-image", dest="appdb_img", nargs="?")
+    parser.add_argument("--registry-image", dest="registry_img", nargs="?")
     parser.add_argument(
         "--identity-provider", dest="identity_provider", default="egi.eu", nargs="?"
     )
@@ -192,9 +201,15 @@ def novaprobe():
             "Unknown", "cert or access-token command-line arguments not specified", 3
         )
 
-    if argholder.image is None and argholder.appdb_img is None:
+    if (
+        argholder.image is None
+        and argholder.appdb_img is None
+        and argholder.registry_img is None
+    ):
         helpers.nagios_out(
-            "Unknown", "image or appdb-image command-line arguments not specified", 3
+            "Unknown",
+            "image, appdb-image or registry_img command-line arguments not specified",
+            3,
         )
 
     if len(argnotspec) > 0:
@@ -266,7 +281,10 @@ def novaprobe():
     helpers.debug("Nova version: %s" % nova.versions.get_current().version)
 
     if not argholder.image:
-        image = get_image(argholder.appdb_img, glance)
+        if argholder.registry_img:
+            image = get_registry_image(argholder.registry_img, glance)
+        if not image and argholder.appdb_img:
+            image = get_appdb_image(argholder.appdb_img, glance)
     else:
         image = argholder.image
 

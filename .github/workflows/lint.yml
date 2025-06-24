@@ -25,3 +25,4 @@ jobs:
           DEFAULT_BRANCH: devel
           VALIDATE_PYTHON_PYLINT: false
           VALIDATE_GROOVY: false
+          VALIDATE_JSON_PRETTIER: false
