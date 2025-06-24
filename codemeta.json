@@ -9,7 +9,7 @@
   "downloadUrl": "https://github.com/ARGOeu-Metrics/argo-probe-fedcloud/archive/refs/heads/master.zip",
   "issueTracker": "https://github.com/ARGOeu-Metrics/argo-probe-fedcloud/issues",
   "name": "Argo Probe Fedcloud",
-  "version": "0.10.2",
+  "version": "0.11.0",
   "description": "This package includes probes for EGI FedCloud services. Currently, it supports the following tests: a) Openstack Nova, b) OpenStack Swift, c) FedCloud Accounting Freshness, d) Cloud info provider freshness",
   "applicationCategory": "monitoring service",
   "developmentStatus": "active",
