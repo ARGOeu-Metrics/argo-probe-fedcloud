@@ -20,6 +20,7 @@ import time
 import traceback
 
 import glanceclient
+import glanceclient.exc
 import neutronclient.v2_0.client as neutron_client
 import novaclient.client as nova_client
 from argo_probe_fedcloud import helpers
@@ -30,25 +31,40 @@ STATUS_SLEEP_TIME = 10
 SERVER_NAME = "cloudmonprobe-servertest"
 
 
+def get_image_from_id(image_id, glance):
+    try:
+        image = glance.images.get(image_id)
+        if image.status == "active":
+            return image
+    except glanceclient.exc.HTTPNotFound as e:
+        pass
+    helpers.debug("Image with id %s not found!" % image_id)
+    return None
+
+
 def get_registry_image(registry_id, glance):
     for image in glance.images.list():
+        if image.status != "active":
+            continue
         attrs = json.loads(image.get("APPLIANCE_ATTRIBUTES", "{}"))
         if attrs.get("eu.egi.cloud.image_ref", "") == registry_id:
             return image
     helpers.debug("Image with registry_id %s not found!" % registry_id)
+    return None
 
 
 def get_appdb_image(appdb_id, glance):
     for image in glance.images.list():
+        if image.status != "active":
+            continue
         if image.get("ad:appid", "") == appdb_id:
             return image
         # TODO: this is to be deprecated as sites move to newer cloudkeeper
         attrs = json.loads(image.get("APPLIANCE_ATTRIBUTES", "{}"))
         if attrs.get("ad:appid", "") == appdb_id:
             return image
-    helpers.nagios_out(
-        "Critical", "Could not find image ID for AppDB image %s" % appdb_id, 2
-    )
+    helpers.debug("Image with appdb_id %s not found!" % appdb_id)
+    return None
 
 
 def get_flavor(flavor_name, nova):
@@ -293,7 +309,10 @@ def novaprobe():
         if not image and argholder.appdb_img:
             image = get_appdb_image(argholder.appdb_img, glance)
     else:
-        image = argholder.image
+        image = get_image_from_id(argholder.image, glance)
+
+    if not image:
+        helpers.nagios_out("Critical", "Could not find an image for the probe", 2)
 
     helpers.debug("Image: %s" % image.id)
 
