@@ -36,7 +36,7 @@ def get_image_from_id(image_id, glance):
         image = glance.images.get(image_id)
         if image.status == "active":
             return image
-    except glanceclient.exc.HTTPNotFound as e:
+    except glanceclient.exc.HTTPNotFound:
         pass
     helpers.debug("Image with id %s not found!" % image_id)
     return None
