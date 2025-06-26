@@ -23,56 +23,43 @@ import requests
 from argo_probe_fedcloud import helpers
 
 
-def get_endpoint_info_from_appdb(appdb_endpoint, appdb_cache, appdb_cache_ttl):
-    """Fetch required data from AppDB IS GraphQL API for all endpoints
+def get_sites_data_from_is(is_endpoint, is_cache, is_cache_ttl):
+    """Fetch required data from IS API for all endpoints
     and cache them in a file. If the cache has not expired, serve the data
     from the file upon the next request, otherwise, refetch from the API
     """
     data = None
     fetched = False
     try:
-        if os.path.exists(appdb_cache):
-            if time.time() - os.path.getmtime(appdb_cache) < appdb_cache_ttl:
-                f = open(appdb_cache)
+        if os.path.exists(is_cache):
+            if time.time() - os.path.getmtime(is_cache) < is_cache_ttl:
+                f = open(is_cache)
                 data = json.load(f)
                 f.close()
     except (OSError, IOError) as e:
-        helpers.debug("Error while reading AppDB API response from cache file %s" % e)
+        helpers.debug("Error while reading IS API response from cache file %s" % e)
 
     if data is None:
         try:
-            helpers.debug("Querying AppDB for endpoints")
-            url = "/".join([appdb_endpoint, "graphql"])
-            query = """
-{
-siteCloudComputingEndpoints{
-  items{
-    endpointURL
-    shares: shareList {
-      VO
-      entityCreationTime
-    }
-  }
-}
-}
-"""
-            params = {"query": query}
+            helpers.debug("Querying IS for endpoints")
+            url = "/".join([is_endpoint, "sites/"])
+            params = {"detailed": True}
             r = requests.get(url, params=params, headers={"accept": "application/json"})
             r.raise_for_status()
-            data = r.json()["data"]["siteCloudComputingEndpoints"]["items"]
+            data = r.json()
             fetched = True
         except requests.exceptions.RequestException as e:
-            msg = "Could not get info from AppDB: %s" % e
+            msg = "Could not get info from IS: %s" % e
             helpers.nagios_out("Unknown", msg, 3)
         except (IndexError, ValueError):
             return None
     if fetched:
         try:
-            f = open(appdb_cache, "w")
+            f = open(is_cache, "w")
             json.dump(data, f)
             f.close()
         except (OSError, IOError) as e:
-            helpers.debug("Error while saving AppDB API response to cache file %s" % e)
+            helpers.debug("Error while saving IS API response to cache file %s" % e)
     return data
 
 
@@ -81,29 +68,27 @@ def main():
     parser.add_argument("-e", "--endpoint", dest="endpoint", required=True)
     parser.add_argument("-v", dest="verb", action="store_true")
     parser.add_argument("-t", dest="timeout", type=int, default=120)
-    parser.add_argument("--appdb-endpoint", default="https://is.appdb.egi.eu")
+    parser.add_argument("--is-endpoint", default="https://is.cloud.egi.eu")
     parser.add_argument("--warning-treshold", type=int, default=1)
     parser.add_argument("--critical-treshold", type=int, default=5)
     parser.add_argument(
-        "--appdb-cache", dest="appdb_cache", default="/tmp/appdbcache.json"
+        "--is-cache", dest="is_cache", default="/tmp/cloud_is.json"
     )
     parser.add_argument(
-        "--appdb-cache-ttl", dest="appdb_cache_ttl", type=int, default="600"
+        "--is-cache-ttl", dest="is_cache_ttl", type=int, default="600"
     )
     opts = parser.parse_args()
 
     if opts.verb:
         helpers.verbose = True
 
-    endpoints = get_endpoint_info_from_appdb(
-        opts.appdb_endpoint, opts.appdb_cache, opts.appdb_cache_ttl
-    )
+    sites = get_sites_from_is(opts.is_endpoint, opts.is_cache, opts.is_cache_ttl)
 
     search_endpoint = opts.endpoint
     vos = None
 
-    for endpoint in endpoints:
-        if endpoint["endpointURL"] == search_endpoint:
+    for site in sites:
+        if site["url"] == search_endpoint:
             vos = endpoint["shares"]
             break
 
