@@ -16,7 +16,6 @@ import argparse
 import json
 import os
 import time
-from datetime import datetime
 from urllib.parse import urlparse, urlunparse
 
 import requests
@@ -107,7 +106,7 @@ def main():
     # TODO: check if all the expected VOs are present
     vos = site_info.get("projects")
     if not vos:
-        helper.nagios_out(
+        helpers.nagios_out(
             "Warning", f"No VOs available on IS about endpoint {search_endpoint}", 1
         )
 
