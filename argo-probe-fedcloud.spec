@@ -1,6 +1,6 @@
 Summary:       ARGO probes for EGI FedCloud services
 Name:          argo-probe-fedcloud
-Version:       0.11.0
+Version:       0.11.1
 Release:       1%{?dist}
 License:       ASL 2.0
 Group:         Network/Monitoring
@@ -38,6 +38,8 @@ rm -rf $RPM_BUILD_ROOT
 %{_bindir}/check_fedcloud_accnt
 
 %changelog
+* Thu Jul 3 2025 Katarina Zailac <kzailac@srce.hr> - 0.11.1-1%{?dist}
+- Fix issues found in the production probe
 * Tue Jun 24 2025 Katarina Zailac <kzailac@srce.hr> - 0.11.0-1%{?dist}
 - Support registry.egi.eu images
 * Thu Dec 19 2024 Katarina Zailac <kzailac@srce.hr> - 0.10.2-1%{?dist}
