@@ -110,7 +110,9 @@ def main():
             "Warning", f"No VOs available on IS about endpoint {search_endpoint}", 1
         )
 
-    helpers.nagios_out("OK", "Endpoint publishing up to date information for VOs", 0)
+    helpers.nagios_out(
+        "OK", f"Endpoint publishing up to date information for {len(vos)} VOs", 0
+    )
 
 
 if __name__ == "__main__":
