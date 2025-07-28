@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.11.2-1] - 2025-07-28
+
+### Changed
+
+* Move the new cloud info sys instead of relying on the AppDB which is being deprecated
+
 ## [0.11.1-1] - 2025-07-03
 
 ### Fixed
