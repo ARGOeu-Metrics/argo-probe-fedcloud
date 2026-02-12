@@ -15,6 +15,7 @@ from keystoneclient.v3 import client
 
 logger_stream = io.StringIO()
 LOG = logging.getLogger(__name__)
+
 OK = 0
 WARNING = 1
 CRITICAL = 2
@@ -29,7 +30,9 @@ status_map = {
 
 
 def configure_logging(verbose=0):
+    level = logging.DEBUG if verbose > 1 else logging.INFO
     logging.basicConfig(
+        level=level,
         handlers=[logging.StreamHandler(logger_stream)],
         force=True,
         format="%(asctime)s %(levelname).1s - %(message)s",
