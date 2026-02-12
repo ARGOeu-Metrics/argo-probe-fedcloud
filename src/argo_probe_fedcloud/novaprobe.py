@@ -177,7 +177,6 @@ def get_network_id(project_id, neutron):
 
 
 def novaprobe():
-    argnotspec = []
     parser = argparse.ArgumentParser()
     parser.add_argument("--endpoint", dest="endpoint", required=True)
     parser.add_argument("-v", dest="verb", action="count")
