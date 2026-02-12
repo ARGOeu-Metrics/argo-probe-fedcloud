@@ -14,6 +14,7 @@
 
 import argparse
 import json
+import logging
 import os
 import time
 from urllib.parse import urlparse, urlunparse
@@ -36,11 +37,11 @@ def get_sites_data_from_is(is_endpoint, is_cache, is_cache_ttl):
                 data = json.load(f)
                 f.close()
     except (OSError, IOError) as e:
-        helpers.debug(f"Error while reading IS API response from cache file: {e}")
+        logging.debug(f"Error while reading IS API response from cache file: {e}")
 
     if data is None:
         try:
-            helpers.debug("Querying IS for endpoints")
+            logging.debug("Querying IS for endpoints")
             url = "/".join([is_endpoint, "sites/"])
             params = {"include_projects": True}
             r = requests.get(url, params=params, headers={"accept": "application/json"})
@@ -49,7 +50,7 @@ def get_sites_data_from_is(is_endpoint, is_cache, is_cache_ttl):
             fetched = True
         except requests.exceptions.RequestException as e:
             msg = f"Could not get info from IS: {e}"
-            helpers.nagios_out("Unknown", msg, 3)
+            helpers.nagios_out(helpers.UNKNOWN, msg)
         except (IndexError, ValueError):
             return None
     if fetched:
@@ -58,7 +59,7 @@ def get_sites_data_from_is(is_endpoint, is_cache, is_cache_ttl):
             json.dump(data, f)
             f.close()
         except (OSError, IOError) as e:
-            helpers.debug(f"Error while saving IS API response to cache file {e}")
+            logging.debug(f"Error while saving IS API response to cache file {e}")
     return data
 
 
@@ -72,8 +73,7 @@ def main():
     parser.add_argument("--is-cache-ttl", dest="is_cache_ttl", type=int, default="600")
     opts = parser.parse_args()
 
-    if opts.verb:
-        helpers.verbose = True
+    helpers.configure_logging(opts.verb)
 
     sites = get_sites_data_from_is(opts.is_endpoint, opts.is_cache, opts.is_cache_ttl)
 
@@ -90,7 +90,7 @@ def main():
         # find the endpoint without it if it's HTTPS/443
         parsed = urlparse(search_endpoint)
         if parsed[0] == "https" and parsed[1].endswith(":443"):
-            helpers.debug("Retry query with no port in URL")
+            logging.debug("Retry query with no port in URL")
             search_endpoint = urlunparse(
                 (parsed[0], parsed[1][:-4], parsed[2], parsed[3], parsed[4], parsed[5])
             )
@@ -101,17 +101,17 @@ def main():
 
     if site_info is None:
         msg = f"Could not get info from IS about endpoint {search_endpoint}"
-        helpers.nagios_out("Critical", msg, 2)
+        helpers.nagios_out(helpers.CRITICAL, msg)
 
     # TODO: check if all the expected VOs are present
     vos = site_info.get("projects")
     if not vos:
         helpers.nagios_out(
-            "Warning", f"No VOs available on IS about endpoint {search_endpoint}", 1
+            helpers.WARNING, f"No VOs available on IS about endpoint {search_endpoint}"
         )
 
     helpers.nagios_out(
-        "OK", f"Endpoint publishing up to date information for {len(vos)} VOs", 0
+        helpers.OK, f"Endpoint publishing up to date information for {len(vos)} VOs"
     )
 
 
