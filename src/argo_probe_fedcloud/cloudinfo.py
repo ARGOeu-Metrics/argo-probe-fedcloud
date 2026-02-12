@@ -24,6 +24,7 @@ from argo_probe_fedcloud import helpers
 
 LOG = logging.getLogger(__name__)
 
+
 def get_sites_data_from_is(is_endpoint, is_cache, is_cache_ttl):
     """Fetch required data from IS API for all endpoints
     and cache them in a file. If the cache has not expired, serve the data
@@ -51,7 +52,7 @@ def get_sites_data_from_is(is_endpoint, is_cache, is_cache_ttl):
             fetched = True
         except requests.exceptions.RequestException as e:
             msg = f"Could not get info from IS: {e}"
-            helpers.nagios_out(helpers.UNKNOWN, msg)
+            helpers.unknown(msg)
         except (IndexError, ValueError):
             return None
     if fetched:
@@ -102,18 +103,14 @@ def main():
 
     if site_info is None:
         msg = f"Could not get info from IS about endpoint {search_endpoint}"
-        helpers.nagios_out(helpers.CRITICAL, msg)
+        helpers.critical(msg)
 
     # TODO: check if all the expected VOs are present
     vos = site_info.get("projects")
     if not vos:
-        helpers.nagios_out(
-            helpers.WARNING, f"No VOs available on IS about endpoint {search_endpoint}"
-        )
+        helpers.warning(f"No VOs available on IS about endpoint {search_endpoint}")
 
-    helpers.nagios_out(
-        helpers.OK, f"Endpoint publishing up to date information for {len(vos)} VOs"
-    )
+    helpers.ok(f"Endpoint publishing up to date information for {len(vos)} VOs")
 
 
 if __name__ == "__main__":

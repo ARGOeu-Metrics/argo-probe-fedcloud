@@ -45,8 +45,7 @@ class Swift:
             requests.exceptions.HTTPError,
         ) as e:
             LOG.debug("Error while creating container: %s" % e)
-            helpers.nagios_out(
-                helpers.CRITICAL,
+            helpers.critical(
                 "Could not create new OpenStack Swift Container: %s: %s"
                 % (container_id, e),
             )
@@ -66,8 +65,7 @@ class Swift:
                 "Error while creating object %s in container %s: %s"
                 % (object_id, container_id, e)
             )
-            helpers.nagios_out(
-                helpers.CRITICAL,
+            helpers.critical(
                 "Could not create a new object file: %s: %s" % (object_id, e),
             )
 
@@ -87,8 +85,7 @@ class Swift:
             AssertionError,
         ) as e:
             LOG.debug("Error while fetching object %s file: %s" % (object_id, e))
-            helpers.nagios_out(
-                helpers.CRITICAL,
+            helpers.critical(
                 "Could not fetch object: %s: %s" % (object_id, e),
             )
 
@@ -104,8 +101,7 @@ class Swift:
             requests.exceptions.HTTPError,
         ) as e:
             LOG.debug("Error while deleting object: %s: %s" % (object_id, e))
-            helpers.nagios_out(
-                helpers.CRITICAL,
+            helpers.critical(
                 "Could not delete object: %s: %s" % (object_id, e),
             )
 
@@ -120,8 +116,7 @@ class Swift:
             requests.exceptions.HTTPError,
         ) as e:
             LOG.debug("Error while deleting container: %s: %s" % (container_id, e))
-            helpers.nagios_out(
-                helpers.CRITICAL,
+            helpers.critical(
                 "Could not delete the OpenStack Swift Container %s: %s"
                 % (container_id, e),
             )
@@ -164,30 +159,24 @@ def main():
         argnotspec.append("endpoint")
 
     if args.cert is None and args.access_token is None:
-        helpers.nagios_out(
-            helpers.UNKNOWN, "cert or access-token command-line arguments not specified"
-        )
+        helpers.unknown("cert or access-token command-line arguments not specified")
 
     if len(argnotspec) > 0:
         msg_error_args = ""
         for arg in argnotspec:
             msg_error_args += arg
 
-        helpers.nagios_out(
-            helpers.UNKNOWN, "command-line arguments not specified: " + msg_error_args
-        )
+        helpers.unknown("command-line arguments not specified: " + msg_error_args)
 
     else:
         if not args.endpoint.startswith("http"):
-            helpers.nagios_out(
-                helpers.UNKNOWN, "command-line arguments are not correct"
-            )
+            helpers.unknown("command-line arguments are not correct")
 
         if args.cert and not os.path.isfile(args.cert):
-            helpers.nagios_out(helpers.UNKNOWN, "cert file does not exist")
+            helpers.unknown("cert file does not exist")
 
         if args.access_token and not os.path.isfile(args.access_token):
-            helpers.nagios_out(helpers.UNKNOWN, "access-token file does not exist")
+            helpers.unknown("access-token file does not exist")
 
     ks_token = None
     access_token = None
@@ -219,7 +208,7 @@ def main():
             break
 
     else:
-        helpers.nagios_out(helpers.CRITICAL, "Unable to authenticate against Keystone")
+        helpers.critical("Unable to authenticate against Keystone")
 
     LOG.debug("Swift public endpoint: %s" % swift_endpoint)
     LOG.debug("Auth token (cut to 64 chars): %.64s" % ks_token)
@@ -259,8 +248,7 @@ def main():
     LOG.debug("Close connection with the OpenStack Swift Object Storage")
     session.close()
 
-    helpers.nagios_out(
-        helpers.OK,
+    helpers.ok(
         "OpenStack Swift Container %s created and destroyed, "
         "object %s created and destroyed" % (container_id, object_id),
     )

@@ -60,9 +60,7 @@ def get_flavor(flavor_name, nova):
     try:
         return nova.flavors.find(name=flavor_name)
     except NotFound:
-        helpers.nagios_out(
-            helpers.CRITICAL, f"Could not fetch flavor ID for flavor {flavor_name}"
-        )
+        helpers.critical(f"Could not fetch flavor ID for flavor {flavor_name}")
 
 
 def get_smaller_flavor(nova):
@@ -92,8 +90,7 @@ def clean_up(argo_host, vm_timeout, nova):
             if server_mon_host == argo_host:
                 LOG.debug("Found server from previous run, deleting and aborting!")
                 wait_for_delete(s.id, vm_timeout, nova)
-                helpers.nagios_out(
-                    helpers.WARNING,
+                helpers.warning(
                     "Previous run server still runnning, won't continue!",
                 )
             else:
@@ -134,8 +131,7 @@ def wait_for_status(status, server_id, vm_timeout, nova):
         i += 1
     return False
     # this goes out!
-    helpers.nagios_out(
-        helpers.CRITICAL,
+    helpers.critical(
         f"Timeout ({vm_timeout}) exceeded waiting for server {server_id} to be active",
     )
     return False
@@ -155,8 +151,7 @@ def create_server(argo_host, image, flavor, network, nova):
     except Exception as e:
         LOG.debug("Error from server while creating server")
         LOG.debug(e)
-        helpers.nagios_out(
-            helpers.CRITICAL,
+        helpers.critical(
             f"Could not launch server from image {image.id}: {e}",
         )
 
@@ -198,20 +193,17 @@ def novaprobe():
     helpers.configure_logging(argholder.verb)
 
     if argholder.cert is None and argholder.access_token is None:
-        helpers.nagios_out(
-            helpers.UNKNOWN, "cert or access-token command-line arguments not specified"
-        )
+        helpers.unknown("cert or access-token command-line arguments not specified")
 
     if argholder.image is None and argholder.registry_img is None:
-        helpers.nagios_out(
-            helpers.UNKNOWN,
+        helpers.unknwon(
             "image or registry_img command-line arguments not specified",
         )
 
     if argholder.cert and not os.path.isfile(argholder.cert):
-        helpers.nagios_out(helpers.UNKNOWN, "cert file does not exist")
+        helpers.unknown("cert file does not exist")
     if argholder.access_token and not os.path.isfile(argholder.access_token):
-        helpers.nagios_out(helpers.UNKNOWN, "access-token file does not exist")
+        helpers.unknown("access-token file does not exist")
 
     LOG.debug(f"Endpoint: {argholder.endpoint}")
 
@@ -254,7 +246,7 @@ def novaprobe():
         if authenticated:
             break
     else:
-        helpers.nagios_out(helpers.CRITICAL, "Unable to authenticate against Keystone")
+        helpers.critical("Unable to authenticate against Keystone")
 
     # get clients
     nova = nova_client.Client("2", region_name=region, session=ks_session)
@@ -270,7 +262,7 @@ def novaprobe():
         image = get_image_from_id(argholder.image, glance)
 
     if not image:
-        helpers.nagios_out(helpers.CRITICAL, "Could not find an image for the probe")
+        helpers.critical("Could not find an image for the probe")
     LOG.debug(f"Image: {image.id}")
 
     if not argholder.flavor:
@@ -301,25 +293,25 @@ def novaprobe():
     LOG.debug(f"Server={server_id} deleted in %{server_deletet:.2f} seconds")
 
     if server_built and server_deleted:
-        exit_code = helpers.OK
+        exit_fn = helpers.ok
         msg = (
             f"Compute instance={server_id} created ({server_createt:.2f}s) "
             f"and destroyed ({server_deletet:.2f}s)"
         )
     elif server_built:
-        exit_code = helpers.CRITICAL
+        exit_fn = helpers.critical
         msg = (
             f"Compute instance={server_id} created ({server_createt:.2f}s) "
             f"but not destroyed ({server_deletet:.2f}s)"
         )
     else:
-        exit_code = helpers.CRITICAL
+        exit_fn = helpers.critical
         msg = (
             f"Compute instance={server_id} created with error ({server_createt:.2f}s) "
             f"and destroyed ({server_deletet:.2f}s)"
         )
 
-    helpers.nagios_out(exit_code, msg)
+    exit_fn(msg)
 
 
 def main():
@@ -327,7 +319,7 @@ def main():
         novaprobe()
     except Exception as e:
         LOG.debug(traceback.format_exc())
-        helpers.nagios_out(helpers.CRITICAL, f"Unexpected error: {e}")
+        helpers.critical(f"Unexpected error: {e}")
 
 
 if __name__ == "__main__":

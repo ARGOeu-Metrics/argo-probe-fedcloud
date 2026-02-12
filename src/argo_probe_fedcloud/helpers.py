@@ -21,13 +21,6 @@ WARNING = 1
 CRITICAL = 2
 UNKNOWN = 3
 
-status_map = {
-    OK: "OK",
-    WARNING: "Warning",
-    CRITICAL: "Critical",
-    UNKNOWN: "Unknown",
-}
-
 
 def configure_logging(verbose=0):
     level = logging.DEBUG if verbose > 1 else logging.INFO
@@ -42,11 +35,33 @@ def configure_logging(verbose=0):
 
 
 def nagios_out(exit_code, msg):
+    status_map = {
+        OK: "OK",
+        WARNING: "Warning",
+        CRITICAL: "Critical",
+        UNKNOWN: "Unknown",
+    }
     status = status_map.get(exit_code, "Unknown")
     LOG.debug(f"Exit code: {exit_code} - {status} - {msg}")
     sys.stdout.write(f"{status}: {msg}\n")
     sys.stdout.write(logger_stream.getvalue())
     sys.exit(exit_code)
+
+
+def warning(msg=""):
+    nagios_out(WARNING, msg)
+
+
+def ok(msg=""):
+    nagios_out(OK, msg)
+
+
+def critical(msg=""):
+    nagios_out(CRITICAL, msg)
+
+
+def unknown(msg=""):
+    nagios_out(UNKNOWN, msg)
 
 
 class AuthenticationException(Exception):
