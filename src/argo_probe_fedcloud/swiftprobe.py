@@ -20,6 +20,8 @@ import uuid
 import requests
 from argo_probe_fedcloud import helpers
 
+LOG = logging.getLogger(__name__)
+
 
 class Swift:
     """The swift probe"""
@@ -42,7 +44,7 @@ class Swift:
             requests.exceptions.Timeout,
             requests.exceptions.HTTPError,
         ) as e:
-            logging.debug("Error while creating container: %s" % e)
+            LOG.debug("Error while creating container: %s" % e)
             helpers.nagios_out(
                 helpers.CRITICAL,
                 "Could not create new OpenStack Swift Container: %s: %s"
@@ -60,7 +62,7 @@ class Swift:
             requests.exceptions.Timeout,
             requests.exceptions.HTTPError,
         ) as e:
-            logging.debug(
+            LOG.debug(
                 "Error while creating object %s in container %s: %s"
                 % (object_id, container_id, e)
             )
@@ -84,7 +86,7 @@ class Swift:
             requests.exceptions.HTTPError,
             AssertionError,
         ) as e:
-            logging.debug("Error while fetching object %s file: %s" % (object_id, e))
+            LOG.debug("Error while fetching object %s file: %s" % (object_id, e))
             helpers.nagios_out(
                 helpers.CRITICAL,
                 "Could not fetch object: %s: %s" % (object_id, e),
@@ -101,7 +103,7 @@ class Swift:
             requests.exceptions.Timeout,
             requests.exceptions.HTTPError,
         ) as e:
-            logging.debug("Error while deleting object: %s: %s" % (object_id, e))
+            LOG.debug("Error while deleting object: %s: %s" % (object_id, e))
             helpers.nagios_out(
                 helpers.CRITICAL,
                 "Could not delete object: %s: %s" % (object_id, e),
@@ -117,7 +119,7 @@ class Swift:
             requests.exceptions.Timeout,
             requests.exceptions.HTTPError,
         ) as e:
-            logging.debug("Error while deleting container: %s: %s" % (container_id, e))
+            LOG.debug("Error while deleting container: %s: %s" % (container_id, e))
             helpers.nagios_out(
                 helpers.CRITICAL,
                 "Could not delete the OpenStack Swift Container %s: %s"
@@ -206,12 +208,12 @@ def main():
             )
             ks_token = auth.authenticate()
             tenant_id, swift_endpoint = auth.get_swift_endpoint()
-            logging.debug("Authenticated with %s" % auth_class.name)
+            LOG.debug("Authenticated with %s" % auth_class.name)
             authenticated = True
             break
 
         except helpers.AuthenticationException:
-            logging.debug("Authentication with %s failed" % auth_class.name)
+            LOG.debug("Authentication with %s failed" % auth_class.name)
 
         if authenticated:
             break
@@ -219,16 +221,16 @@ def main():
     else:
         helpers.nagios_out(helpers.CRITICAL, "Unable to authenticate against Keystone")
 
-    logging.debug("Swift public endpoint: %s" % swift_endpoint)
-    logging.debug("Auth token (cut to 64 chars): %.64s" % ks_token)
-    logging.debug("Project OPS, ID: %s" % tenant_id)
+    LOG.debug("Swift public endpoint: %s" % swift_endpoint)
+    LOG.debug("Auth token (cut to 64 chars): %.64s" % ks_token)
+    LOG.debug("Project OPS, ID: %s" % tenant_id)
 
     # Creating a new Container
     container_id = "container-" + str(uuid.uuid4())
     object_id = "file-" + str(uuid.uuid4())
     data = "This is just an ASCII file\n"
 
-    logging.debug("Establish a connection with the OpenStack Swift Object Storage")
+    LOG.debug("Establish a connection with the OpenStack Swift Object Storage")
     session = requests.Session()
     session.headers.update({"x-auth-token": ks_token})
     session.headers.update(
@@ -239,22 +241,22 @@ def main():
 
     _swift = Swift(swift_endpoint=swift_endpoint, token=ks_token, session=session)
 
-    logging.debug("Create a new OpenStack Swift Container: %s" % container_id)
+    LOG.debug("Create a new OpenStack Swift Container: %s" % container_id)
     _swift.put_container(container_id)
 
-    logging.debug("Create a new object file: %s" % object_id)
+    LOG.debug("Create a new object file: %s" % object_id)
     _swift.put_object(container_id, object_id, data)
 
-    logging.debug("Fetch the object file")
+    LOG.debug("Fetch the object file")
     _swift.get_object(container_id, object_id)
 
-    logging.debug("Delete the object file: %s" % object_id)
+    LOG.debug("Delete the object file: %s" % object_id)
     _swift.delete_object(container_id, object_id)
 
-    logging.debug("Delete the OpenStack Swift Container %s" % container_id)
+    LOG.debug("Delete the OpenStack Swift Container %s" % container_id)
     _swift.delete_container(container_id)
 
-    logging.debug("Close connection with the OpenStack Swift Object Storage")
+    LOG.debug("Close connection with the OpenStack Swift Object Storage")
     session.close()
 
     helpers.nagios_out(

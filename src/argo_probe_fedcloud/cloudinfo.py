@@ -22,6 +22,7 @@ from urllib.parse import urlparse, urlunparse
 import requests
 from argo_probe_fedcloud import helpers
 
+LOG = logging.getLogger(__name__)
 
 def get_sites_data_from_is(is_endpoint, is_cache, is_cache_ttl):
     """Fetch required data from IS API for all endpoints
@@ -37,11 +38,11 @@ def get_sites_data_from_is(is_endpoint, is_cache, is_cache_ttl):
                 data = json.load(f)
                 f.close()
     except (OSError, IOError) as e:
-        logging.debug(f"Error while reading IS API response from cache file: {e}")
+        LOG.debug(f"Error while reading IS API response from cache file: {e}")
 
     if data is None:
         try:
-            logging.debug("Querying IS for endpoints")
+            LOG.debug("Querying IS for endpoints")
             url = "/".join([is_endpoint, "sites/"])
             params = {"include_projects": True}
             r = requests.get(url, params=params, headers={"accept": "application/json"})
@@ -59,7 +60,7 @@ def get_sites_data_from_is(is_endpoint, is_cache, is_cache_ttl):
             json.dump(data, f)
             f.close()
         except (OSError, IOError) as e:
-            logging.debug(f"Error while saving IS API response to cache file {e}")
+            LOG.debug(f"Error while saving IS API response to cache file {e}")
     return data
 
 
@@ -90,7 +91,7 @@ def main():
         # find the endpoint without it if it's HTTPS/443
         parsed = urlparse(search_endpoint)
         if parsed[0] == "https" and parsed[1].endswith(":443"):
-            logging.debug("Retry query with no port in URL")
+            LOG.debug("Retry query with no port in URL")
             search_endpoint = urlunparse(
                 (parsed[0], parsed[1][:-4], parsed[2], parsed[3], parsed[4], parsed[5])
             )
