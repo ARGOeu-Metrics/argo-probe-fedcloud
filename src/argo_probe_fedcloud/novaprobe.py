@@ -111,7 +111,6 @@ def wait_for_status(status, server_id, vm_timeout, nova):
         # server status
         try:
             server = nova.servers.get(server_id)
-            LOG.debug(server.status)
             if status in server.status:
                 return True
             if "ERROR" in server.status:
@@ -236,12 +235,12 @@ def novaprobe():
             )
             auth.authenticate()
             project_id = auth.get_project_id()
-            LOG.debug(f"Authenticated with {auth_class.name}")
+            LOG.info(f"Authenticated with {auth_class.name}")
             authenticated = True
             ks_session = auth.session
         except helpers.AuthenticationException:
             # just go ahead
-            LOG.debug("Authentication with %s failed" % auth_class.name)
+            LOG.debug(f"Authentication with {auth_class.name} failed")
 
         if authenticated:
             break
@@ -253,7 +252,7 @@ def novaprobe():
     glance = glanceclient.Client("2", region_name=region, session=ks_session)
     neutron = neutron_client.Client(region_name=region, session=ks_session)
 
-    LOG.debug("Nova version: %s" % nova.versions.get_current().version)
+    LOG.debug(f"Nova version: {nova.versions.get_current().version}")
 
     if not argholder.image:
         if argholder.registry_img:
@@ -271,7 +270,6 @@ def novaprobe():
         flavor = get_flavor(argholder.flavor, nova)
     LOG.debug(f"Flavor ID: {flavor.id}")
 
-    LOG.debug(project_id)
     network_id = get_network_id(project_id, neutron)
 
     # remove previous servers if found
@@ -290,7 +288,7 @@ def novaprobe():
     st = time.time()
     server_deleted = wait_for_delete(server_id, argholder.vm_timeout, nova)
     server_deletet = round(time.time() - st, 2)
-    LOG.debug(f"Server={server_id} deleted in %{server_deletet:.2f} seconds")
+    LOG.debug(f"Server={server_id} deleted in {server_deletet:.2f} seconds")
 
     if server_built and server_deleted:
         exit_fn = helpers.ok

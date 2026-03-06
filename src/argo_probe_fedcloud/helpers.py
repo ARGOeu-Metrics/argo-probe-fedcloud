@@ -160,7 +160,7 @@ class OIDCAuth(BaseV3Auth):
             self.session.invalidate()
             self.session.auth.project_id = project.id
             token = self.session.get_token()
-            LOG.debug(f"Auth token (SHA256): {hashlib.sha256(token.encode())}")
+            LOG.debug(f"Auth token (SHA256): {hashlib.sha256(token.encode()).hexdigest()}")
         except ClientException as e:
             raise AuthenticationException(
                 f"Could not fetch scoped keystone token for {project}: {e}"
@@ -195,11 +195,9 @@ class OIDCAuth(BaseV3Auth):
 class SecretAppCredentialsAuth(BaseV3Auth):
     name = "Secret Store Application Credentials"
     vault_url = "https://vault.services.fedcloud.eu:8200"
-    vault_role = ""
+    vault_role = "argo-mon"
     vault_mount_point = "/secrets/"
-    vault_path_base = (
-        "users/529a87e5ce04cd5ddd7161734d02df0e2199a11452430803e714cb1309cc3907@egi.eu"
-    )
+    vault_path_base = "vos/cloud.egi.eu/cloudmon"
 
     def __init__(self, access_token="", **kwargs):
         super().__init__(**kwargs)
@@ -222,12 +220,25 @@ class SecretAppCredentialsAuth(BaseV3Auth):
         try:
             client = hvac.Client(url=self.vault_url)
             client.auth.jwt.jwt_login(role="", jwt=self.access_token)
+            # AppRole Login - first get role_id and secret_id and then
+            # the actual login
+            role_id = (
+                client.auth.approle.read_role_id(role_name=self.vault_role)
+                .get("data", {})
+                .get("role_id", None)
+            )
+            secret_id = (
+                client.auth.approle.generate_secret_id(role_name=self.vault_role)
+                .get("data", {})
+                .get("secret_id", None)
+            )
+            client.auth.approle.login(role_id=role_id, secret_id=secret_id)
             keystone_host = urlparse(self.auth_url).netloc.split(":", 1)[0]
             secret_path = os.path.join(self.vault_path_base, keystone_host)
             appcred_args = client.secrets.kv.v1.read_secret(
                 path=secret_path,
                 mount_point="/secrets/",
-            )
+            ).get("data", {})
         except VaultError as e:
             msg = f"Unable to get secret for {self.auth_url}: {e}"
             raise AuthenticationException(msg)
@@ -236,14 +247,14 @@ class SecretAppCredentialsAuth(BaseV3Auth):
         try:
             auth = v3.ApplicationCredential(
                 auth_url=self.auth_url,
-                **appcred_args["data"],
+                **appcred_args,
             )
             self.session = session.Session(
                 auth=auth, verify=self.verify, timeout=self.timeout
             )
             token = self.session.get_token()
             LOG.debug("Project OPS, ID: %s" % self.session.get_project_id())
-            LOG.debug(f"Auth token (SHA256): {hashlib.sha256(token.encode())}")
+            LOG.debug(f"Auth token (SHA256): {hashlib.sha256(token.encode()).hexdigest()}")
         except ClientException as e:
             LOG.debug(f"Authentication failed: {e}")
             raise AuthenticationException(f"Unable to authenticate: {e}")
