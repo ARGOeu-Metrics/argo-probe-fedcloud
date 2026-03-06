@@ -160,7 +160,9 @@ class OIDCAuth(BaseV3Auth):
             self.session.invalidate()
             self.session.auth.project_id = project.id
             token = self.session.get_token()
-            LOG.debug(f"Auth token (SHA256): {hashlib.sha256(token.encode()).hexdigest()}")
+            LOG.debug(
+                f"Auth token (SHA256): {hashlib.sha256(token.encode()).hexdigest()}"
+            )
         except ClientException as e:
             raise AuthenticationException(
                 f"Could not fetch scoped keystone token for {project}: {e}"
@@ -254,7 +256,9 @@ class SecretAppCredentialsAuth(BaseV3Auth):
             )
             token = self.session.get_token()
             LOG.debug("Project OPS, ID: %s" % self.session.get_project_id())
-            LOG.debug(f"Auth token (SHA256): {hashlib.sha256(token.encode()).hexdigest()}")
+            LOG.debug(
+                f"Auth token (SHA256): {hashlib.sha256(token.encode()).hexdigest()}"
+            )
         except ClientException as e:
             LOG.debug(f"Authentication failed: {e}")
             raise AuthenticationException(f"Unable to authenticate: {e}")
