@@ -25,4 +25,5 @@ jobs:
           DEFAULT_BRANCH: devel
           VALIDATE_PYTHON_PYLINT: false
           VALIDATE_GROOVY: false
+          MARKDOWN_CONFIG_FILE: .markdownlint.json
           VALIDATE_MARKDOWN_PRETTIER: false
