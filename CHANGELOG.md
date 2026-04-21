@@ -44,7 +44,7 @@
 
 ### Changed
 
-* Updates from the devel branch of old repo
+* Updates from the devel branch of old repository
 * AO-651 Harmonize EGI probes
 
 ## [0.6.3-1] - 2022-06-24
@@ -150,7 +150,7 @@
 
 ### Changed
 
-* novaprobe: use of ids insteads of urls for flavors and image by Enol Fernandez
+* novaprobe: use of IDs insteads of URLs for flavors and image by Enol Fernandez
 
 ## [0.1.3-1] - 2016-12-13
 
