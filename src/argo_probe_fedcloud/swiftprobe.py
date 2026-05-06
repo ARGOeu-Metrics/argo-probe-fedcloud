@@ -13,11 +13,14 @@
 # limitations under the License.
 
 import argparse
+import logging
 import os
 import uuid
 
 import requests
 from argo_probe_fedcloud import helpers
+
+LOG = logging.getLogger(__name__)
 
 
 class Swift:
@@ -41,14 +44,10 @@ class Swift:
             requests.exceptions.Timeout,
             requests.exceptions.HTTPError,
         ) as e:
-            helpers.debug(
-                "Error while creating container: %s" % helpers.errmsg_from_excp(e)
-            )
-            helpers.nagios_out(
-                "Critical",
+            LOG.debug("Error while creating container: %s" % e)
+            helpers.critical(
                 "Could not create new OpenStack Swift Container: %s: %s"
-                % (container_id, helpers.errmsg_from_excp(e)),
-                2,
+                % (container_id, e),
             )
 
     def put_object(self, container_id, object_id, data):
@@ -62,15 +61,12 @@ class Swift:
             requests.exceptions.Timeout,
             requests.exceptions.HTTPError,
         ) as e:
-            helpers.debug(
+            LOG.debug(
                 "Error while creating object %s in container %s: %s"
-                % (object_id, container_id, helpers.errmsg_from_excp(e))
+                % (object_id, container_id, e)
             )
-            helpers.nagios_out(
-                "Critical",
-                "Could not create a new object file: %s: %s"
-                % (object_id, helpers.errmsg_from_excp(e)),
-                2,
+            helpers.critical(
+                "Could not create a new object file: %s: %s" % (object_id, e),
             )
 
     def get_object(self, container_id, object_id):
@@ -88,15 +84,9 @@ class Swift:
             requests.exceptions.HTTPError,
             AssertionError,
         ) as e:
-            helpers.debug(
-                "Error while fetching object %s file: %s"
-                % (object_id, helpers.errmsg_from_excp(e))
-            )
-            helpers.nagios_out(
-                "Critical",
-                "Could not fetch object: %s: %s"
-                % (object_id, helpers.errmsg_from_excp(e)),
-                2,
+            LOG.debug("Error while fetching object %s file: %s" % (object_id, e))
+            helpers.critical(
+                "Could not fetch object: %s: %s" % (object_id, e),
             )
 
     def delete_object(self, container_id, object_id):
@@ -110,15 +100,9 @@ class Swift:
             requests.exceptions.Timeout,
             requests.exceptions.HTTPError,
         ) as e:
-            helpers.debug(
-                "Error while deleting object: %s: %s"
-                % (object_id, helpers.errmsg_from_excp(e))
-            )
-            helpers.nagios_out(
-                "Critical",
-                "Could not delete object: %s: %s"
-                % (object_id, helpers.errmsg_from_excp(e)),
-                2,
+            LOG.debug("Error while deleting object: %s: %s" % (object_id, e))
+            helpers.critical(
+                "Could not delete object: %s: %s" % (object_id, e),
             )
 
     def delete_container(self, container_id):
@@ -131,15 +115,10 @@ class Swift:
             requests.exceptions.Timeout,
             requests.exceptions.HTTPError,
         ) as e:
-            helpers.debug(
-                "Error while deleting container: %s: %s"
-                % (container_id, helpers.errmsg_from_excp(e))
-            )
-            helpers.nagios_out(
-                "Critical",
+            LOG.debug("Error while deleting container: %s: %s" % (container_id, e))
+            helpers.critical(
                 "Could not delete the OpenStack Swift Container %s: %s"
                 % (container_id, e),
-                2,
             )
 
 
@@ -174,34 +153,30 @@ def main():
     )
 
     args = parser.parse_args()
-    helpers.verbose = args.verbose
+    helpers.configure_logging(args.verbose)
 
     if args.endpoint is None:
         argnotspec.append("endpoint")
 
     if args.cert is None and args.access_token is None:
-        helpers.nagios_out(
-            "Unknown", "cert or access-token command-line arguments not specified", 3
-        )
+        helpers.unknown("cert or access-token command-line arguments not specified")
 
     if len(argnotspec) > 0:
         msg_error_args = ""
         for arg in argnotspec:
             msg_error_args += arg
 
-        helpers.nagios_out(
-            "Unknown", "command-line arguments not specified: " + msg_error_args, 3
-        )
+        helpers.unknown("command-line arguments not specified: " + msg_error_args)
 
     else:
         if not args.endpoint.startswith("http"):
-            helpers.nagios_out("Unknown", "command-line arguments are not correct", 3)
+            helpers.unknown("command-line arguments are not correct")
 
         if args.cert and not os.path.isfile(args.cert):
-            helpers.nagios_out("Unknown", "cert file does not exist", 3)
+            helpers.unknown("cert file does not exist")
 
         if args.access_token and not os.path.isfile(args.access_token):
-            helpers.nagios_out("Unknown", "access-token file does not exist", 3)
+            helpers.unknown("access-token file does not exist")
 
     ks_token = None
     access_token = None
@@ -214,37 +189,37 @@ def main():
         authenticated = False
         try:
             auth = auth_class(
-                args.endpoint,
-                args.timeout,
+                endpoint=args.endpoint,
+                timeout=args.timeout,
                 access_token=access_token,
                 identity_provider=args.identity_provider,
                 userca=args.cert,
             )
             ks_token = auth.authenticate()
             tenant_id, swift_endpoint = auth.get_swift_endpoint()
-            helpers.debug("Authenticated with %s" % auth_class.name)
+            LOG.debug("Authenticated with %s" % auth_class.name)
             authenticated = True
             break
 
         except helpers.AuthenticationException:
-            helpers.debug("Authentication with %s failed" % auth_class.name)
+            LOG.debug("Authentication with %s failed" % auth_class.name)
 
         if authenticated:
             break
 
     else:
-        helpers.nagios_out("Critical", "Unable to authenticate against Keystone", 2)
+        helpers.critical("Unable to authenticate against Keystone")
 
-    helpers.debug("Swift public endpoint: %s" % swift_endpoint)
-    helpers.debug("Auth token (cut to 64 chars): %.64s" % ks_token)
-    helpers.debug("Project OPS, ID: %s" % tenant_id)
+    LOG.debug("Swift public endpoint: %s" % swift_endpoint)
+    LOG.debug("Auth token (cut to 64 chars): %.64s" % ks_token)
+    LOG.debug("Project OPS, ID: %s" % tenant_id)
 
     # Creating a new Container
     container_id = "container-" + str(uuid.uuid4())
     object_id = "file-" + str(uuid.uuid4())
     data = "This is just an ASCII file\n"
 
-    helpers.debug("Establish a connection with the OpenStack Swift Object Storage")
+    LOG.debug("Establish a connection with the OpenStack Swift Object Storage")
     session = requests.Session()
     session.headers.update({"x-auth-token": ks_token})
     session.headers.update(
@@ -255,29 +230,27 @@ def main():
 
     _swift = Swift(swift_endpoint=swift_endpoint, token=ks_token, session=session)
 
-    helpers.debug("Create a new OpenStack Swift Container: %s" % container_id)
+    LOG.debug("Create a new OpenStack Swift Container: %s" % container_id)
     _swift.put_container(container_id)
 
-    helpers.debug("Create a new object file: %s" % object_id)
+    LOG.debug("Create a new object file: %s" % object_id)
     _swift.put_object(container_id, object_id, data)
 
-    helpers.debug("Fetch the object file")
+    LOG.debug("Fetch the object file")
     _swift.get_object(container_id, object_id)
 
-    helpers.debug("Delete the object file: %s" % object_id)
+    LOG.debug("Delete the object file: %s" % object_id)
     _swift.delete_object(container_id, object_id)
 
-    helpers.debug("Delete the OpenStack Swift Container %s" % container_id)
+    LOG.debug("Delete the OpenStack Swift Container %s" % container_id)
     _swift.delete_container(container_id)
 
-    helpers.debug("Close connection with the OpenStack Swift Object Storage")
+    LOG.debug("Close connection with the OpenStack Swift Object Storage")
     session.close()
 
-    helpers.nagios_out(
-        "OK",
+    helpers.ok(
         "OpenStack Swift Container %s created and destroyed, "
         "object %s created and destroyed" % (container_id, object_id),
-        0,
     )
 
 

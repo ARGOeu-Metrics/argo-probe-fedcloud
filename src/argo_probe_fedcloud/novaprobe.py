@@ -14,6 +14,7 @@
 
 import argparse
 import json
+import logging
 import os
 import socket
 import time
@@ -30,6 +31,8 @@ from novaclient.exceptions import NotFound
 STATUS_SLEEP_TIME = 10
 SERVER_NAME = "cloudmonprobe-servertest"
 
+LOG = logging.getLogger(__name__)
+
 
 def get_image_from_id(image_id, glance):
     try:
@@ -38,7 +41,7 @@ def get_image_from_id(image_id, glance):
             return image
     except glanceclient.exc.HTTPNotFound:
         pass
-    helpers.debug("Image with id %s not found!" % image_id)
+    LOG.debug(f"Image with id {image_id} not found!")
     return None
 
 
@@ -49,21 +52,7 @@ def get_registry_image(registry_id, glance):
         attrs = json.loads(image.get("APPLIANCE_ATTRIBUTES", "{}"))
         if attrs.get("eu.egi.cloud.image_ref", "") == registry_id:
             return image
-    helpers.debug("Image with registry_id %s not found!" % registry_id)
-    return None
-
-
-def get_appdb_image(appdb_id, glance):
-    for image in glance.images.list():
-        if image.status != "active":
-            continue
-        if image.get("ad:appid", "") == appdb_id:
-            return image
-        # TODO: this is to be deprecated as sites move to newer cloudkeeper
-        attrs = json.loads(image.get("APPLIANCE_ATTRIBUTES", "{}"))
-        if attrs.get("ad:appid", "") == appdb_id:
-            return image
-    helpers.debug("Image with appdb_id %s not found!" % appdb_id)
+    LOG.debug("Image with registry_id {registry_id} not found!")
     return None
 
 
@@ -71,9 +60,7 @@ def get_flavor(flavor_name, nova):
     try:
         return nova.flavors.find(name=flavor_name)
     except NotFound:
-        helpers.nagios_out(
-            "Critical", f"Could not fetch flavor ID for flavor {flavor_name}", 2
-        )
+        helpers.critical(f"Could not fetch flavor ID for flavor {flavor_name}")
 
 
 def get_smaller_flavor(nova):
@@ -91,7 +78,7 @@ def wait_for_delete(server_id, vm_timeout, nova):
         server = nova.servers.get(server_id)
         server.delete()
     except NotFound:
-        helpers.debug(f"Server {server_id} is gone, ignoring")
+        LOG.debug(f"Server {server_id} is gone, ignoring")
         return True
     return wait_for_status("DELETED", server_id, vm_timeout, nova)
 
@@ -101,18 +88,16 @@ def clean_up(argo_host, vm_timeout, nova):
         server_mon_host = s.metadata.get("argo-mon-host", "")
         if server_mon_host:
             if server_mon_host == argo_host:
-                helpers.debug("Found server from previous run, deleting and aborting!")
+                LOG.debug("Found server from previous run, deleting and aborting!")
                 wait_for_delete(s.id, vm_timeout, nova)
-                helpers.nagios_out(
-                    "Warning",
+                helpers.warning(
                     "Previous run server still runnning, won't continue!",
-                    1,
                 )
             else:
                 # this is another test
                 # we may want to delete it if it's been too long, now we wait for
                 # STATUS_SLEEP_TIME so it can get cleaned up by the other server
-                helpers.debug(
+                LOG.debug(
                     f"Found server from {server_mon_host}, "
                     f"triggering probe anyway after {STATUS_SLEEP_TIME} seconds"
                 )
@@ -121,35 +106,32 @@ def clean_up(argo_host, vm_timeout, nova):
 
 def wait_for_status(status, server_id, vm_timeout, nova):
     i = 0
-    helpers.debug(f"Check server {server_id} status every {STATUS_SLEEP_TIME}s")
+    LOG.debug(f"Check server {server_id} status every {STATUS_SLEEP_TIME}s")
     while i < vm_timeout / STATUS_SLEEP_TIME:
         # server status
         try:
             server = nova.servers.get(server_id)
-            helpers.debug(server.status, False)
             if status in server.status:
                 return True
             if "ERROR" in server.status:
-                helpers.debug(f"Error from nova: {server.fault}")
+                LOG.debug(f"Error from nova: {server.fault}")
                 return False
             time.sleep(STATUS_SLEEP_TIME)
         except NotFound:
             if status == "DELETED":
                 return True
             else:
-                helpers.debug(f"Server {server_id} not found!? retrying")
+                LOG.debug(f"Server {server_id} not found!? retrying")
         except Exception as e:
-            helpers.debug(
+            LOG.debug(
                 f"There was an error checking server {server_id} "
-                f"status: {helpers.errmsg_from_excp(e)}, retrying"
+                f"status: {e}, retrying"
             )
         i += 1
     return False
     # this goes out!
-    helpers.nagios_out(
-        "Critical",
+    helpers.critical(
         f"Timeout ({vm_timeout}) exceeded waiting for server {server_id} to be active",
-        2,
     )
     return False
 
@@ -166,163 +148,129 @@ def create_server(argo_host, image, flavor, network, nova):
         )
         return server.id
     except Exception as e:
-        helpers.debug("Error from server while creating server")
-        helpers.debug(e)
-        helpers.nagios_out(
-            "Critical",
-            f"Could not launch server from image {image.id}: {helpers.errmsg_from_excp(e)}",
-            2,
+        LOG.debug("Error from server while creating server")
+        LOG.debug(e)
+        helpers.critical(
+            f"Could not launch server from image {image.id}: {e}",
         )
 
 
 def get_network_id(project_id, neutron):
     for net in neutron.list_networks()["networks"]:
-        if net["status"] == "ACTIVE" and net["project_id"] == project_id:
+        if net["status"] == "ACTIVE" and (
+            net["project_id"] == project_id or net["tenant_id"] == project_id
+        ):
             network_id = net["id"]
-            helpers.debug("Network id: %s" % network_id)
+            LOG.debug(f"Network id {network_id}")
             return network_id
     else:
-        helpers.debug(
+        LOG.debug(
             "No tenant-owned network found, hoping VM creation will still work..."
         )
         return None
 
 
 def novaprobe():
-    argnotspec = []
     parser = argparse.ArgumentParser()
-    parser.add_argument("--endpoint", dest="endpoint", nargs="?")
-    parser.add_argument("-v", dest="verb", action="store_true")
-    parser.add_argument("--flavor", dest="flavor", nargs="?")
-    parser.add_argument("--image", dest="image", nargs="?")
-    parser.add_argument("--cert", dest="cert", nargs="?")
-    parser.add_argument("--access-token", dest="access_token", nargs="?")
-    parser.add_argument("-t", dest="timeout", type=int, nargs="?", default=120)
+    parser.add_argument("--endpoint", dest="endpoint", required=True)
+    parser.add_argument("-v", dest="verb", action="count")
+    parser.add_argument("--flavor", dest="flavor")
+    parser.add_argument("--image", dest="image")
+    parser.add_argument("--cert", dest="cert")
+    parser.add_argument("--access-token", dest="access_token")
+    parser.add_argument("-t", dest="timeout", type=int, default=120)
+    parser.add_argument("--vm-timeout", dest="vm_timeout", type=int, default=300)
+    parser.add_argument("--registry-image", dest="registry_img")
     parser.add_argument(
-        "--vm-timeout", dest="vm_timeout", type=int, nargs="?", default=300
+        "--identity-provider", dest="identity_provider", default="egi.eu"
     )
-    parser.add_argument("--appdb-image", dest="appdb_img", nargs="?")
-    parser.add_argument("--registry-image", dest="registry_img", nargs="?")
-    parser.add_argument(
-        "--identity-provider", dest="identity_provider", default="egi.eu", nargs="?"
-    )
-    parser.add_argument("--region", dest="region", default=None, nargs="?")
-    parser.add_argument(
-        "--argo-host-name", dest="argo_host_name", default=None, nargs="?"
-    )
+    parser.add_argument("--region", dest="region", default=None)
+    parser.add_argument("--argo-host-name", dest="argo_host_name", default=None)
     parser.add_argument("--insecure", dest="insecure", action="store_true")
 
     argholder = parser.parse_args()
-    helpers.verbose = argholder.verb
-
-    for arg in ["endpoint", "timeout"]:
-        if eval("argholder." + arg) is None:
-            argnotspec.append(arg)
+    helpers.configure_logging(argholder.verb)
 
     if argholder.cert is None and argholder.access_token is None:
-        helpers.nagios_out(
-            "Unknown", "cert or access-token command-line arguments not specified", 3
+        helpers.unknown("cert or access-token command-line arguments not specified")
+
+    if argholder.image is None and argholder.registry_img is None:
+        helpers.unknwon(
+            "image or registry_img command-line arguments not specified",
         )
 
-    if (
-        argholder.image is None
-        and argholder.appdb_img is None
-        and argholder.registry_img is None
-    ):
-        helpers.nagios_out(
-            "Unknown",
-            "image, appdb-image or registry_img command-line arguments not specified",
-            3,
-        )
+    if argholder.cert and not os.path.isfile(argholder.cert):
+        helpers.unknown("cert file does not exist")
+    if argholder.access_token and not os.path.isfile(argholder.access_token):
+        helpers.unknown("access-token file does not exist")
 
-    if len(argnotspec) > 0:
-        msg_error_args = ""
-        for arg in argnotspec:
-            msg_error_args += "%s " % (arg)
-        helpers.nagios_out(
-            "Unknown", "command-line arguments not specified, " + msg_error_args, 3
-        )
-    else:
-        if not argholder.endpoint.startswith("http"):
-            helpers.nagios_out("Unknown", "command-line arguments are not correct", 3)
-        if argholder.cert and not os.path.isfile(argholder.cert):
-            helpers.nagios_out("Unknown", "cert file does not exist", 3)
-        if argholder.access_token and not os.path.isfile(argholder.access_token):
-            helpers.nagios_out("Unknown", "access-token file does not exist", 3)
+    LOG.debug(f"Endpoint: {argholder.endpoint}")
 
-    ks_token = None
     access_token = None
     if argholder.access_token:
         access_file = open(argholder.access_token, "r")
         access_token = access_file.read().rstrip("\n")
         access_file.close()
 
-    region = argholder.region
-
     argo_host = argholder.argo_host_name
     if not argo_host:
         argo_host = socket.gethostname()
+    LOG.debug(f"ARGO Host: {argo_host}")
 
-    for auth_class in [helpers.OIDCAuth]:
-        # , helpers.SecretAppCredentialsAuth]:
+    region = argholder.region
+    if region:
+        LOG.debug(f"Region: {region}")
+
+    for auth_class in [helpers.OIDCAuth, helpers.SecretAppCredentialsAuth]:
+        # for auth_class in [helpers.SecretAppCredentialsAuth]:
         authenticated = False
         try:
             auth = auth_class(
-                argholder.endpoint,
-                argholder.timeout,
+                endpoint=argholder.endpoint,
+                timeout=argholder.timeout,
                 verify=not argholder.insecure,
                 access_token=access_token,
                 identity_provider=argholder.identity_provider,
                 userca=argholder.cert,
             )
-            ks_token = auth.authenticate()
-            tenant_id = auth.get_project_id()
-            helpers.debug("Authenticated with %s" % auth_class.name)
+            auth.authenticate()
+            project_id = auth.get_project_id()
+            LOG.info(f"Authenticated with {auth_class.name}")
             authenticated = True
             ks_session = auth.session
-            break
         except helpers.AuthenticationException:
             # just go ahead
-            helpers.debug("Authentication with %s failed" % auth_class.name)
+            LOG.debug(f"Authentication with {auth_class.name} failed")
 
         if authenticated:
             break
     else:
-        helpers.nagios_out("Critical", "Unable to authenticate against Keystone", 2)
-
-    helpers.debug("Endpoint: %s" % argholder.endpoint)
-    if region:
-        helpers.debug("Region: %s" % region)
-    helpers.debug("Auth token (cut to 64 chars): %.64s" % ks_token)
-    helpers.debug("Project OPS, ID: %s" % tenant_id)
+        helpers.critical("Unable to authenticate against Keystone")
 
     # get clients
     nova = nova_client.Client("2", region_name=region, session=ks_session)
     glance = glanceclient.Client("2", region_name=region, session=ks_session)
     neutron = neutron_client.Client(region_name=region, session=ks_session)
 
-    helpers.debug("Nova version: %s" % nova.versions.get_current().version)
+    LOG.debug(f"Nova version: {nova.versions.get_current().version}")
 
     if not argholder.image:
         if argholder.registry_img:
             image = get_registry_image(argholder.registry_img, glance)
-        if not image and argholder.appdb_img:
-            image = get_appdb_image(argholder.appdb_img, glance)
     else:
         image = get_image_from_id(argholder.image, glance)
 
     if not image:
-        helpers.nagios_out("Critical", "Could not find an image for the probe", 2)
-
-    helpers.debug("Image: %s" % image.id)
+        helpers.critical("Could not find an image for the probe")
+    LOG.debug(f"Image: {image.id}")
 
     if not argholder.flavor:
         flavor = get_smaller_flavor(nova)
     else:
         flavor = get_flavor(argholder.flavor, nova)
-    helpers.debug("Flavor ID: %s" % flavor.id)
+    LOG.debug(f"Flavor ID: {flavor.id}")
 
-    network_id = get_network_id(tenant_id, neutron)
+    network_id = get_network_id(project_id, neutron)
 
     # remove previous servers if found
     clean_up(argo_host, argholder.vm_timeout, nova)
@@ -334,45 +282,42 @@ def novaprobe():
     server_createt = round(time.time() - st, 2)
 
     if server_built:
-        helpers.debug("\nServer created in %.2f seconds" % (server_createt))
+        LOG.debug(f"Server created in {server_createt:.2f} seconds")
 
     # server delete
     st = time.time()
     server_deleted = wait_for_delete(server_id, argholder.vm_timeout, nova)
     server_deletet = round(time.time() - st, 2)
-    helpers.debug("\nServer=%s deleted in %.2f seconds" % (server_id, server_deletet))
+    LOG.debug(f"Server={server_id} deleted in {server_deletet:.2f} seconds")
 
     if server_built and server_deleted:
-        helpers.nagios_out(
-            "OK",
-            "Compute instance=%s created(%.2fs) and destroyed(%.2fs)"
-            % (server_id, server_createt, server_deletet),
-            0,
+        exit_fn = helpers.ok
+        msg = (
+            f"Compute instance={server_id} created ({server_createt:.2f}s) "
+            f"and destroyed ({server_deletet:.2f}s)"
         )
     elif server_built:
-        # Built but not deleted
-        helpers.nagios_out(
-            "Critical",
-            "Compute instance=%s created (%.2fs) but not destroyed(%.2fs)"
-            % (server_id, server_createt, server_deletet),
-            2,
+        exit_fn = helpers.critical
+        msg = (
+            f"Compute instance={server_id} created ({server_createt:.2f}s) "
+            f"but not destroyed ({server_deletet:.2f}s)"
         )
     else:
-        # not built but deleted
-        helpers.nagios_out(
-            "Critical",
-            "Compute instance=%s created with error(%.2fs) and destroyed(%.2fs)"
-            % (server_id, server_createt, server_deletet),
-            2,
+        exit_fn = helpers.critical
+        msg = (
+            f"Compute instance={server_id} created with error ({server_createt:.2f}s) "
+            f"and destroyed ({server_deletet:.2f}s)"
         )
+
+    exit_fn(msg)
 
 
 def main():
     try:
         novaprobe()
     except Exception as e:
-        helpers.debug(traceback.format_exc())
-        helpers.nagios_out("Critical", "Unexpected error: %s" % e, 2)
+        LOG.debug(traceback.format_exc())
+        helpers.critical(f"Unexpected error: {e}")
 
 
 if __name__ == "__main__":

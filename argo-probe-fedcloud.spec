@@ -14,6 +14,7 @@ Requires:      python3-keystoneclient
 Requires:      python3-neutronclient
 Requires:      python3-glanceclient
 Requires:      python3-keystoneauth1
+Requires:      python3-hvac
 BuildRequires: python3-devel
 BuildRequires: pyproject-rpm-macros
 BuildRequires: python3-wheel
