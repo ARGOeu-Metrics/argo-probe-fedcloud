@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.11.3-1] - 2026-05-25
+
+### Changed
+
+* Authenticate using application credentials
+
 ## [0.11.2-1] - 2025-07-28
 
 ### Changed
