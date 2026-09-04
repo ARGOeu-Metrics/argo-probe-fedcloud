@@ -164,9 +164,7 @@ def get_network_id(project_id, neutron):
             network_id = net["id"]
             LOG.debug(f"Network id {network_id}")
             return network_id
-    LOG.debug(
-        "No tenant-owned network found, hoping VM creation will still work..."
-    )
+    LOG.debug("No tenant-owned network found, hoping VM creation will still work...")
     return None
 
 
@@ -239,7 +237,7 @@ def novaprobe():
             ks_session = auth.session
         except helpers.AuthenticationException:
             # just go ahead
-            LOG.debug(f"Authentication with {auth_class.name} failed")
+            LOG.warning(f"Authentication with {auth_class.name} failed")
 
         if authenticated:
             break

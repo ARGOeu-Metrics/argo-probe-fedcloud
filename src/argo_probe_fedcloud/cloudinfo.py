@@ -20,6 +20,7 @@ import time
 from urllib.parse import urlparse, urlunparse
 
 import requests
+
 from argo_probe_fedcloud import helpers
 
 LOG = logging.getLogger(__name__)
@@ -33,18 +34,19 @@ def get_sites_data_from_is(is_endpoint, is_cache, is_cache_ttl):
     data = None
     fetched = False
     try:
-        if os.path.exists(is_cache):
-            if time.time() - os.path.getmtime(is_cache) < is_cache_ttl:
-                f = open(is_cache)
+        if (
+            os.path.exists(is_cache)
+            and time.time() - os.path.getmtime(is_cache) < is_cache_ttl
+        ):
+            with open(is_cache) as f:
                 data = json.load(f)
-                f.close()
-    except (OSError, IOError) as e:
+    except OSError as e:
         LOG.debug(f"Error while reading IS API response from cache file: {e}")
 
     if data is None:
         try:
             LOG.debug("Querying IS for endpoints")
-            url = "/".join([is_endpoint, "sites/"])
+            url = f"{is_endpoint}/sites/"
             params = {"include_projects": True}
             r = requests.get(url, params=params, headers={"accept": "application/json"})
             r.raise_for_status()
@@ -57,10 +59,9 @@ def get_sites_data_from_is(is_endpoint, is_cache, is_cache_ttl):
             return None
     if fetched:
         try:
-            f = open(is_cache, "w")
-            json.dump(data, f)
-            f.close()
-        except (OSError, IOError) as e:
+            with open(is_cache, "w") as f:
+                json.dump(data, f)
+        except OSError as e:
             LOG.debug(f"Error while saving IS API response to cache file {e}")
     return data
 
