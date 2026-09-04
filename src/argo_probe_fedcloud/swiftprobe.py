@@ -18,7 +18,6 @@ import os
 import uuid
 
 import requests
-
 from argo_probe_fedcloud import helpers
 
 LOG = logging.getLogger(__name__)

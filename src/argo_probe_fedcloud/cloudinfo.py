@@ -20,7 +20,6 @@ import time
 from urllib.parse import urlparse, urlunparse
 
 import requests
-
 from argo_probe_fedcloud import helpers
 
 LOG = logging.getLogger(__name__)

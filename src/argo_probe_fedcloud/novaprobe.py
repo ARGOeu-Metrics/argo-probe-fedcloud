@@ -24,9 +24,8 @@ import glanceclient
 import glanceclient.exc
 import neutronclient.v2_0.client as neutron_client
 import novaclient.client as nova_client
-from novaclient.exceptions import NotFound
-
 from argo_probe_fedcloud import helpers
+from novaclient.exceptions import NotFound
 
 # time to sleep between status checks
 STATUS_SLEEP_TIME = 10
@@ -202,7 +201,7 @@ def novaprobe():
     if argholder.access_token and not os.path.isfile(argholder.access_token):
         helpers.unknown("access-token file does not exist")
 
-    LOG.debug(f"Endpoint: {argholder.endpoint}")
+    LOG.info(f"Endpoint: {argholder.endpoint}")
 
     access_token = None
     if argholder.access_token:
@@ -212,11 +211,11 @@ def novaprobe():
     argo_host = argholder.argo_host_name
     if not argo_host:
         argo_host = socket.gethostname()
-    LOG.debug(f"ARGO Host: {argo_host}")
+    LOG.info(f"ARGO Host: {argo_host}")
 
     region = argholder.region
     if region:
-        LOG.debug(f"Region: {region}")
+        LOG.info(f"Region: {region}")
 
     for auth_class in [helpers.OIDCAuth, helpers.SecretAppCredentialsAuth]:
         # for auth_class in [helpers.SecretAppCredentialsAuth]:
@@ -249,7 +248,7 @@ def novaprobe():
     glance = glanceclient.Client("2", region_name=region, session=ks_session)
     neutron = neutron_client.Client(region_name=region, session=ks_session)
 
-    LOG.debug(f"Nova version: {nova.versions.get_current().version}")
+    LOG.info(f"Nova version: {nova.versions.get_current().version}")
 
     if not argholder.image:
         if argholder.registry_img:
@@ -259,13 +258,13 @@ def novaprobe():
 
     if not image:
         helpers.critical("Could not find an image for the probe")
-    LOG.debug(f"Image: {image.id}")
+    LOG.info(f"Image: {image.id}")
 
     if not argholder.flavor:
         flavor = get_smaller_flavor(nova)
     else:
         flavor = get_flavor(argholder.flavor, nova)
-    LOG.debug(f"Flavor ID: {flavor.id}")
+    LOG.info(f"Flavor ID: {flavor.id}")
 
     network_id = get_network_id(project_id, neutron)
 
