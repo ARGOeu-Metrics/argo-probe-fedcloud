@@ -24,8 +24,9 @@ import glanceclient
 import glanceclient.exc
 import neutronclient.v2_0.client as neutron_client
 import novaclient.client as nova_client
-from argo_probe_fedcloud import helpers
 from novaclient.exceptions import NotFound
+
+from argo_probe_fedcloud import helpers
 
 # time to sleep between status checks
 STATUS_SLEEP_TIME = 10
@@ -52,7 +53,7 @@ def get_registry_image(registry_id, glance):
         attrs = json.loads(image.get("APPLIANCE_ATTRIBUTES", "{}"))
         if attrs.get("eu.egi.cloud.image_ref", "") == registry_id:
             return image
-    LOG.debug("Image with registry_id {registry_id} not found!")
+    LOG.debug(f"Image with registry_id {registry_id} not found!")
     return None
 
 
@@ -163,11 +164,10 @@ def get_network_id(project_id, neutron):
             network_id = net["id"]
             LOG.debug(f"Network id {network_id}")
             return network_id
-    else:
-        LOG.debug(
-            "No tenant-owned network found, hoping VM creation will still work..."
-        )
-        return None
+    LOG.debug(
+        "No tenant-owned network found, hoping VM creation will still work..."
+    )
+    return None
 
 
 def novaprobe():
@@ -195,7 +195,7 @@ def novaprobe():
         helpers.unknown("cert or access-token command-line arguments not specified")
 
     if argholder.image is None and argholder.registry_img is None:
-        helpers.unknwon(
+        helpers.unknown(
             "image or registry_img command-line arguments not specified",
         )
 
@@ -208,9 +208,8 @@ def novaprobe():
 
     access_token = None
     if argholder.access_token:
-        access_file = open(argholder.access_token, "r")
-        access_token = access_file.read().rstrip("\n")
-        access_file.close()
+        with open(argholder.access_token, "r") as f:
+            access_token = f.read().rstrip("\n")
 
     argo_host = argholder.argo_host_name
     if not argo_host:
