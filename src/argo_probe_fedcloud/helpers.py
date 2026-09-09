@@ -152,8 +152,7 @@ class OIDCAuth(BaseV3Auth):
         for p in projects:
             if "ops" in p.name:
                 return p
-        else:
-            return projects.pop()
+        return projects.pop()
 
     def get_scoped_token(self, project):
         try:
@@ -184,13 +183,13 @@ class OIDCAuth(BaseV3Auth):
                 if self.session.get_token():
                     return
             except ClientException as e:
-                LOG.debug(f"OIDC Auth failed with protocol {p} {e}")
+                LOG.debug(f"OIDC Auth failed (protocol {p}): {e}")
         raise AuthenticationException("Unable to authenticate")
 
     def _get_authenticated(self):
         self.get_unscoped_token()
         project = self.get_ops_tenant()
-        LOG.debug("Project OPS, ID: %s" % project.id)
+        LOG.debug(f"Project OPS, ID:{project.id}")
         self.get_scoped_token(project)
 
 
@@ -243,6 +242,7 @@ class SecretAppCredentialsAuth(BaseV3Auth):
             ).get("data", {})
         except VaultError as e:
             msg = f"Unable to get secret for {self.auth_url}: {e}"
+            LOG.debug(f"AppCred Auth failed: {msg}")
             raise AuthenticationException(msg)
 
         # 2. Authenticate with that into the site
@@ -255,7 +255,7 @@ class SecretAppCredentialsAuth(BaseV3Auth):
                 auth=auth, verify=self.verify, timeout=self.timeout
             )
             token = self.session.get_token()
-            LOG.debug("Project OPS, ID: %s" % self.session.get_project_id())
+            LOG.debug(f"Project OPS, ID: {self.session.get_project_id()}")
             LOG.debug(
                 f"Auth token (SHA256): {hashlib.sha256(token.encode()).hexdigest()}"
             )

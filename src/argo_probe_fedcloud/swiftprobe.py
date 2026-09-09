@@ -44,10 +44,9 @@ class Swift:
             requests.exceptions.Timeout,
             requests.exceptions.HTTPError,
         ) as e:
-            LOG.debug("Error while creating container: %s" % e)
+            LOG.debug(f"Error while creating container: {e}")
             helpers.critical(
-                "Could not create new OpenStack Swift Container: %s: %s"
-                % (container_id, e),
+                f"Could not create new OpenStack Swift Container: {container_id}: {e}",
             )
 
     def put_object(self, container_id, object_id, data):
@@ -62,11 +61,10 @@ class Swift:
             requests.exceptions.HTTPError,
         ) as e:
             LOG.debug(
-                "Error while creating object %s in container %s: %s"
-                % (object_id, container_id, e)
+                f"Error while creating object {object_id} in container {container_id}: {e}"
             )
             helpers.critical(
-                "Could not create a new object file: %s: %s" % (object_id, e),
+                f"Could not create a new object file: {object_id}: {e}",
             )
 
     def get_object(self, container_id, object_id):
@@ -84,9 +82,9 @@ class Swift:
             requests.exceptions.HTTPError,
             AssertionError,
         ) as e:
-            LOG.debug("Error while fetching object %s file: %s" % (object_id, e))
+            LOG.debug(f"Error while fetching object {object_id} file: {e}")
             helpers.critical(
-                "Could not fetch object: %s: %s" % (object_id, e),
+                f"Could not fetch object: {object_id}: {e}",
             )
 
     def delete_object(self, container_id, object_id):
@@ -100,9 +98,9 @@ class Swift:
             requests.exceptions.Timeout,
             requests.exceptions.HTTPError,
         ) as e:
-            LOG.debug("Error while deleting object: %s: %s" % (object_id, e))
+            LOG.debug(f"Error while deleting object: {object_id}: {e}")
             helpers.critical(
-                "Could not delete object: %s: %s" % (object_id, e),
+                f"Could not delete object: {object_id}: {e}",
             )
 
     def delete_container(self, container_id):
@@ -115,10 +113,9 @@ class Swift:
             requests.exceptions.Timeout,
             requests.exceptions.HTTPError,
         ) as e:
-            LOG.debug("Error while deleting container: %s: %s" % (container_id, e))
+            LOG.debug(f"Error while deleting container: {container_id}: {e}")
             helpers.critical(
-                "Could not delete the OpenStack Swift Container %s: %s"
-                % (container_id, e),
+                f"Could not delete the OpenStack Swift Container {container_id}: {e}",
             )
 
 
@@ -181,9 +178,8 @@ def main():
     ks_token = None
     access_token = None
     if args.access_token:
-        access_file = open(args.access_token, "r")
-        access_token = access_file.read().rstrip("\n")
-        access_file.close()
+        with open(args.access_token, "r") as access_file:
+            access_token = access_file.read().rstrip("\n")
 
     for auth_class in [helpers.OIDCAuth]:
         authenticated = False
@@ -197,12 +193,12 @@ def main():
             )
             ks_token = auth.authenticate()
             tenant_id, swift_endpoint = auth.get_swift_endpoint()
-            LOG.debug("Authenticated with %s" % auth_class.name)
+            LOG.debug(f"Authenticated with {auth_class.name}")
             authenticated = True
             break
 
         except helpers.AuthenticationException:
-            LOG.debug("Authentication with %s failed" % auth_class.name)
+            LOG.debug(f"Authentication with {auth_class.name} failed")
 
         if authenticated:
             break
@@ -210,9 +206,9 @@ def main():
     else:
         helpers.critical("Unable to authenticate against Keystone")
 
-    LOG.debug("Swift public endpoint: %s" % swift_endpoint)
-    LOG.debug("Auth token (cut to 64 chars): %.64s" % ks_token)
-    LOG.debug("Project OPS, ID: %s" % tenant_id)
+    LOG.debug(f"Swift public endpoint: {swift_endpoint}")
+    LOG.debug(f"Auth token (cut to 64 chars): {ks_token:.64}")
+    LOG.debug(f"Project OPS, ID: {tenant_id}")
 
     # Creating a new Container
     container_id = "container-" + str(uuid.uuid4())
@@ -230,27 +226,27 @@ def main():
 
     _swift = Swift(swift_endpoint=swift_endpoint, token=ks_token, session=session)
 
-    LOG.debug("Create a new OpenStack Swift Container: %s" % container_id)
+    LOG.debug(f"Create a new OpenStack Swift Container: {container_id}")
     _swift.put_container(container_id)
 
-    LOG.debug("Create a new object file: %s" % object_id)
+    LOG.debug(f"Create a new object file: {object_id}")
     _swift.put_object(container_id, object_id, data)
 
     LOG.debug("Fetch the object file")
     _swift.get_object(container_id, object_id)
 
-    LOG.debug("Delete the object file: %s" % object_id)
+    LOG.debug(f"Delete the object file: {object_id}")
     _swift.delete_object(container_id, object_id)
 
-    LOG.debug("Delete the OpenStack Swift Container %s" % container_id)
+    LOG.debug(f"Delete the OpenStack Swift Container {container_id}")
     _swift.delete_container(container_id)
 
     LOG.debug("Close connection with the OpenStack Swift Object Storage")
     session.close()
 
     helpers.ok(
-        "OpenStack Swift Container %s created and destroyed, "
-        "object %s created and destroyed" % (container_id, object_id),
+        f"OpenStack Swift Container {container_id} created and destroyed, "
+        f"object {object_id} created and destroyed",
     )
 
 

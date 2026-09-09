@@ -52,7 +52,7 @@ def get_registry_image(registry_id, glance):
         attrs = json.loads(image.get("APPLIANCE_ATTRIBUTES", "{}"))
         if attrs.get("eu.egi.cloud.image_ref", "") == registry_id:
             return image
-    LOG.debug("Image with registry_id {registry_id} not found!")
+    LOG.debug(f"Image with registry_id {registry_id} not found!")
     return None
 
 
@@ -163,11 +163,8 @@ def get_network_id(project_id, neutron):
             network_id = net["id"]
             LOG.debug(f"Network id {network_id}")
             return network_id
-    else:
-        LOG.debug(
-            "No tenant-owned network found, hoping VM creation will still work..."
-        )
-        return None
+    LOG.debug("No tenant-owned network found, hoping VM creation will still work...")
+    return None
 
 
 def novaprobe():
@@ -195,7 +192,7 @@ def novaprobe():
         helpers.unknown("cert or access-token command-line arguments not specified")
 
     if argholder.image is None and argholder.registry_img is None:
-        helpers.unknwon(
+        helpers.unknown(
             "image or registry_img command-line arguments not specified",
         )
 
@@ -204,22 +201,21 @@ def novaprobe():
     if argholder.access_token and not os.path.isfile(argholder.access_token):
         helpers.unknown("access-token file does not exist")
 
-    LOG.debug(f"Endpoint: {argholder.endpoint}")
+    LOG.info(f"Endpoint: {argholder.endpoint}")
 
     access_token = None
     if argholder.access_token:
-        access_file = open(argholder.access_token, "r")
-        access_token = access_file.read().rstrip("\n")
-        access_file.close()
+        with open(argholder.access_token, "r") as f:
+            access_token = f.read().rstrip("\n")
 
     argo_host = argholder.argo_host_name
     if not argo_host:
         argo_host = socket.gethostname()
-    LOG.debug(f"ARGO Host: {argo_host}")
+    LOG.info(f"ARGO Host: {argo_host}")
 
     region = argholder.region
     if region:
-        LOG.debug(f"Region: {region}")
+        LOG.info(f"Region: {region}")
 
     for auth_class in [helpers.OIDCAuth, helpers.SecretAppCredentialsAuth]:
         # for auth_class in [helpers.SecretAppCredentialsAuth]:
@@ -240,7 +236,7 @@ def novaprobe():
             ks_session = auth.session
         except helpers.AuthenticationException:
             # just go ahead
-            LOG.debug(f"Authentication with {auth_class.name} failed")
+            LOG.warning(f"Authentication with {auth_class.name} failed")
 
         if authenticated:
             break
@@ -252,7 +248,7 @@ def novaprobe():
     glance = glanceclient.Client("2", region_name=region, session=ks_session)
     neutron = neutron_client.Client(region_name=region, session=ks_session)
 
-    LOG.debug(f"Nova version: {nova.versions.get_current().version}")
+    LOG.info(f"Nova version: {nova.versions.get_current().version}")
 
     if not argholder.image:
         if argholder.registry_img:
@@ -262,13 +258,13 @@ def novaprobe():
 
     if not image:
         helpers.critical("Could not find an image for the probe")
-    LOG.debug(f"Image: {image.id}")
+    LOG.info(f"Image: {image.id}")
 
     if not argholder.flavor:
         flavor = get_smaller_flavor(nova)
     else:
         flavor = get_flavor(argholder.flavor, nova)
-    LOG.debug(f"Flavor ID: {flavor.id}")
+    LOG.info(f"Flavor ID: {flavor.id}")
 
     network_id = get_network_id(project_id, neutron)
 
