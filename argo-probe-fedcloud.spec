@@ -1,6 +1,6 @@
 Summary:       ARGO probes for EGI FedCloud services
 Name:          argo-probe-fedcloud
-Version:       0.11.2
+Version:       0.11.3
 Release:       1%{?dist}
 License:       ASL 2.0
 Group:         Network/Monitoring
@@ -14,6 +14,7 @@ Requires:      python3-keystoneclient
 Requires:      python3-neutronclient
 Requires:      python3-glanceclient
 Requires:      python3-keystoneauth1
+Requires:      python3-hvac
 BuildRequires: python3-devel
 BuildRequires: pyproject-rpm-macros
 BuildRequires: python3-wheel
